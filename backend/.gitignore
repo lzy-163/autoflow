@@ -160,12 +160,3 @@ cython_debug/
 #.idea/
 
 .ruff_cache
-
-*.csv
-
-.DS_Store
-
-# VSCode
-.vscode/
-
-checkpoint.json

@@ -5,11 +5,12 @@ import { defineConfig } from 'vite';
 import injectCss from 'vite-plugin-css-injected-by-js';
 
 const overriding = [
-  'components/remark-content/style.scss',
-  'components/code-theme/style.scss',
+  'components/chat/style.css',
 ];
 
-const overridingPackages: string[] = [];
+const overridingPackages = [
+  'next/headers',
+];
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -20,8 +21,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/library.tsx',
-      formats: ['iife'],
-      name: '__this_name_should_never_exists_on_window__',
+      formats: ['cjs'],
       fileName: () => 'widget.js',
     },
     rollupOptions: {
@@ -32,7 +32,6 @@ export default defineConfig({
   },
   publicDir: '../../app/public',
   resolve: {
-    conditions: ['tidbai-widget'],
     alias: [
       ...overriding.map(override => ({
         find: path.join('@', override),
@@ -49,14 +48,15 @@ export default defineConfig({
     ],
   },
   define: {
-    'process.env.BASE_URL': process.env.NODE_ENV === 'development' ? '"https://tidbai-dev.htapdb.com"' : '""',
+    'process.env.BASE_URL': '""',
+    'process.env.NEXT_PUBLIC_BASE_URL': '""',
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     'process.env.NEXT_PUBLIC_DISABLE_DEBUG_PANEL': 'false',
+    'process.env.NEXT_PUBLIC_MOCKING_CHAT': 'false',
     'process.env.NEXT_PUBLIC_IS_WIDGET': 'true',
     'process.env.__NEXT_ROUTER_BASEPATH': '""',
   },
   server: {
-    port: 3000,
     proxy: {
       '/api': 'https://tidbai-dev.htapdb.com',
     },

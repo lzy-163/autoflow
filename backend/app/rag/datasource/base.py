@@ -8,7 +8,6 @@ from app.models import Document
 
 class BaseDataSource(ABC):
     session: Session
-    knowledge_base_id: int
     data_source_id: int
     user_id: UUID
     config: Any
@@ -16,7 +15,6 @@ class BaseDataSource(ABC):
     def __init__(
         self,
         session: Session,
-        knowledge_base_id: int,
         data_source_id: int,
         user_id: UUID,
         config: Any,
@@ -24,7 +22,6 @@ class BaseDataSource(ABC):
     ):
         self.config = config
         self.session = session
-        self.knowledge_base_id = knowledge_base_id
         self.data_source_id = data_source_id
         self.user_id = user_id
         self.validate_config()

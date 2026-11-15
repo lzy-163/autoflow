@@ -18,25 +18,24 @@ class ChatEngine(UpdatableBaseModel, table=True):
     name: str = Field(max_length=256)
     engine_options: Dict = Field(default={}, sa_column=Column(JSON))
     llm_id: Optional[int] = Field(foreign_key="llms.id", nullable=True)
-    llm: "LLM" = SQLRelationship(  # noqa:F821
+    llm: "LLM" = SQLRelationship(
         sa_relationship_kwargs={
             "foreign_keys": "ChatEngine.llm_id",
         },
     )
     fast_llm_id: Optional[int] = Field(foreign_key="llms.id", nullable=True)
-    fast_llm: "LLM" = SQLRelationship(  # noqa:F821
+    fast_llm: "LLM" = SQLRelationship(
         sa_relationship_kwargs={
             "foreign_keys": "ChatEngine.fast_llm_id",
         },
     )
     reranker_id: Optional[int] = Field(foreign_key="reranker_models.id", nullable=True)
-    reranker: "RerankerModel" = SQLRelationship(  # noqa:F821
+    reranker: "RerankerModel" = SQLRelationship(
         sa_relationship_kwargs={
             "foreign_keys": "ChatEngine.reranker_id",
         },
     )
     is_default: bool = Field(default=False)
-    is_public: bool = Field(default=False)
     deleted_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
 
     __tablename__ = "chat_engines"
@@ -49,4 +48,3 @@ class ChatEngineUpdate(BaseModel):
     reranker_id: Optional[int] = None
     engine_options: Optional[dict] = None
     is_default: Optional[bool] = None
-    is_public: Optional[bool] = None

@@ -2,7 +2,7 @@ from typing import TypeAlias
 from dataclasses import dataclass
 
 
-SettingType: TypeAlias = bool | str | int | float | list | dict | None
+SettingType: TypeAlias = str | int | float | bool | list | dict | None
 
 
 @dataclass

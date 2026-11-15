@@ -1,16 +1,14 @@
 import { getPublicSiteSettings } from '@/api/site-settings';
 import { getBootstrapStatus } from '@/api/system';
 import { RootProviders } from '@/app/RootProviders';
-import { experimentalFeatures } from '@/experimental/experimental-features';
+import { SystemWizardDialog } from '@/components/system/SystemWizardDialog';
 import { auth } from '@/lib/auth';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import './globals.css';
 import Script from 'next/script';
 import { cache, type ReactNode } from 'react';
-
-import './globals.css';
-import './chart-theme.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -40,20 +38,15 @@ export default async function RootLayout ({
     getBootstrapStatus(),
   ]);
 
-  const _experimentalFeatures = experimentalFeatures();
-
-  if (!settings.enable_post_verifications) {
-    _experimentalFeatures.enable_message_post_verification = false;
-  }
-
   return (
     <html lang="en" suppressHydrationWarning>
     <body className={inter.className}>
-    <RootProviders me={me} settings={settings} bootstrapStatus={bootstrapStatus} experimentalFeatures={_experimentalFeatures}>
+    <RootProviders me={me} settings={settings} bootstrapStatus={bootstrapStatus}>
       {children}
+      <SystemWizardDialog />
     </RootProviders>
     {settings.ga_id && <GoogleAnalytics gaId={settings.ga_id} />}
-    <Script async src="/widget.js" data-is-main-site="true" />
+    <Script async src="/widget.js" />
     </body>
     </html>
   );

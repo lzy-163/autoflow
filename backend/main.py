@@ -16,41 +16,37 @@ from app.core.config import settings, Environment
 from app.site_settings import SiteSetting
 from app.utils.uuid6 import uuid7
 
-dictConfig(
-    {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "default": {
-                "format": "%(asctime)s - %(name)s:%(lineno)d - %(levelname)s - %(message)s",
-            },
+dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s - %(name)s:%(lineno)d - %(levelname)s - %(message)s",
         },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "default",
-            },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
         },
-        "root": {
-            "level": logging.INFO
-            if settings.ENVIRONMENT != Environment.LOCAL
-            else logging.DEBUG,
+    },
+    "root": {
+        "level": logging.INFO if settings.ENVIRONMENT != Environment.LOCAL else logging.DEBUG,
+        "handlers": ["console"],
+    },
+    "loggers": {
+        "uvicorn.error": {
+            "level": "ERROR",
             "handlers": ["console"],
+            "propagate": False,
         },
-        "loggers": {
-            "uvicorn.error": {
-                "level": "ERROR",
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            "uvicorn.access": {
-                "level": "INFO",
-                "handlers": ["console"],
-                "propagate": False,
-            },
+        "uvicorn.access": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
         },
-    }
-)
+    },
+})
 
 
 logger = logging.getLogger(__name__)
@@ -67,8 +63,13 @@ if settings.SENTRY_DSN and settings.ENVIRONMENT != "local":
     sentry_sdk.init(
         dsn=str(settings.SENTRY_DSN),
         enable_tracing=True,
-        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-        profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        traces_sample_rate=1.0,
+        # Set profiles_sample_rate to 1.0 to profile 100%
+        # of sampled transactions.
+        # We recommend adjusting this value in production.
+        profiles_sample_rate=1.0,
     )
 
 
@@ -93,7 +94,6 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_origins=[
             str(origin).strip("/") for origin in settings.BACKEND_CORS_ORIGINS
         ],
-        allow_origin_regex=settings.BACKEND_CORS_ORIGIN_REGEXP,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -128,19 +128,11 @@ def cli():
 @cli.command()
 @click.option("--host", default="127.0.0.1", help="Host, default=127.0.0.1")
 @click.option("--port", default=3000, help="Port, default=3000")
-@click.option("--workers", default=4)
-def runserver(host, port, workers):
+def runserver(host, port):
     warnings.warn(
         "This command will start the server in development mode, do not use it in production."
     )
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=True,
-        log_level="debug",
-        workers=workers,
-    )
+    uvicorn.run("main:app", host=host, port=port, reload=True, log_level="debug")
 
 
 @cli.command()
@@ -156,7 +148,7 @@ def runserver(host, port, workers):
 @click.option(
     "--tidb-ai-chat-engine",
     default="default",
-    help="TiDB AI chat engine, default=default",
+    help=f"TiDB AI chat engine, default=default",
 )
 def runeval(dataset, llm_provider, run_name, tidb_ai_chat_engine):
     from app.evaluation.evals import Evaluation
@@ -168,55 +160,6 @@ def runeval(dataset, llm_provider, run_name, tidb_ai_chat_engine):
         tidb_ai_chat_engine=tidb_ai_chat_engine,
     )
     eval.run()
-
-
-@cli.command()
-@click.option(
-    "--csv",
-    default="autoflow_dataset.csv",
-    help="Dataset CSV file name that contains two columns `query` and `reference`, default='autoflow_dataset.csv'",
-)
-@click.option(
-    "--llm-provider",
-    default="openai",
-    help="LLM provider, default=openai, options=[openai, gemini]",
-)
-@click.option("--run-name", default=None, help="Run name, default=None")
-@click.option(
-    "--tidb-ai-chat-engine",
-    default="default",
-    help="TiDB AI chat engine, default=default",
-)
-@click.option("--run-size", default=30, help="Run size, default=30")
-def runeval_dataset(csv, llm_provider, run_name, tidb_ai_chat_engine, run_size):
-    from app.evaluation.evals import Evaluation
-
-    evaluation = Evaluation(
-        dataset_name="customize",
-        llm_provider=llm_provider,
-        run_name=run_name,
-        tidb_ai_chat_engine=tidb_ai_chat_engine,
-    )
-    evaluation.runeval_dataset(csv_dataset=csv, run_size=run_size)
-
-
-@cli.command()
-@click.option("--query", default=None, help="query")
-def generate_answer_by_tidb_ai(query: str):
-    from app.evaluation.evals import Evaluation
-
-    evaluation = Evaluation(
-        dataset_name="customize",
-        llm_provider="openai",
-        run_name=None,
-        tidb_ai_chat_engine="default",
-    )
-
-    print(
-        evaluation.generate_answer_by_tidb_ai(
-            messages=[{"role": "user", "content": query}]
-        )
-    )
 
 
 if __name__ == "__main__":

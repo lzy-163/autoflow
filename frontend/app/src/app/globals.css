@@ -8,17 +8,9 @@
     --body-height: calc(100vh - var(--header-height));
     --body-padding: 1rem;
     --content-height: calc(var(--body-height) - var(--body-padding) * 6);
-    --sidebar-width: ;
-    --content-width: calc(100vw - var(--sidebar-width));
+    --side-width: 20rem;
+    --content-width: calc(100vw - var(--side-width));
     --ask-referral-height: 4rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   :root {
@@ -75,20 +67,12 @@
     --accent: 240 3.7% 15.9%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 72.2% 50.6%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -116,24 +100,20 @@
 
 @layer base {
   :root {
-    --warning: 37.7 92.1% 50.2%;
-    --warning-foreground: 0 0% 98%;
-    --info: 198.6 88.7% 48.4%;
-    --info-foreground: 0 0% 98%;
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 0 0% 98%;
+    --chart-1: 359 2% 90%;
+    --chart-2: 240 1% 74%;
+    --chart-3: 240 1% 58%;
+    --chart-4: 240 1% 42%;
+    --chart-5: 240 2% 26%;
   }
 
   .dark {
-    --warning: 32.1 94.6% 43.7%;
-    --warning-foreground: 0 0% 98%;
-    --info: 200.4 98% 39.4%;
-    --info-foreground: 0 0% 98%;
-    --success: 142.1 76.2% 36.3%;
-    --success-foreground: 0 0% 98%;
+    --chart-1: 359 2% 90%;
+    --chart-2: 240 1% 74%;
+    --chart-3: 240 1% 58%;
+    --chart-4: 240 1% 42%;
+    --chart-5: 240 2% 26%;
   }
 }
 
-.grecaptcha-badge {
-  visibility: hidden;
-}
+.grecaptcha-badge { visibility: hidden; }

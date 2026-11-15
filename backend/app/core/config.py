@@ -1,6 +1,7 @@
+import secrets
+import warnings
 import enum
 from typing import Annotated, Any
-from urllib.parse import quote
 
 from pydantic import (
     AnyUrl,
@@ -38,8 +39,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     DOMAIN: str = "localhost"
     ENVIRONMENT: Environment = Environment.LOCAL
-    LOG_LEVEL: str = "INFO"
-    SQLALCHEMY_LOG_LEVEL: str = "WARNING"
 
     SESSION_COOKIE_NAME: str = "session"
     # 90 days
@@ -60,22 +59,9 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str, BeforeValidator(parse_cors)
     ] = []
-    BACKEND_CORS_ORIGIN_REGEXP: str | None = None
 
     PROJECT_NAME: str = "TiDB.AI"
     SENTRY_DSN: HttpUrl | None = None
-    SENTRY_TRACES_SAMPLE_RATE: float = 1.0
-    SENTRY_PROFILES_SAMPLE_RATE: float = 1.0
-
-    @model_validator(mode="after")
-    def _validate_sentry_sample_rate(self) -> Self:
-        if not self.SENTRY_DSN:
-            return self
-        if self.SENTRY_TRACES_SAMPLE_RATE < 0 or self.SENTRY_TRACES_SAMPLE_RATE > 1:
-            raise ValueError("SENTRY_TRACES_SAMPLE_RATE must be between 0 and 1")
-        if self.SENTRY_PROFILES_SAMPLE_RATE < 0 or self.SENTRY_PROFILES_SAMPLE_RATE > 1:
-            raise ValueError("SENTRY_PROFILES_SAMPLE_RATE must be between 0 and 1")
-        return self
 
     LOCAL_FILE_STORAGE_PATH: str = "/shared/data"
 
@@ -86,8 +72,6 @@ class Settings(BaseSettings):
     TIDB_DATABASE: str
     TIDB_SSL: bool = True
 
-    ENABLE_QUESTION_CACHE: bool = False
-
     CELERY_BROKER_URL: str = "redis://redis:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
 
@@ -96,14 +80,9 @@ class Settings(BaseSettings):
     TIDB_AI_API_KEY: SecretStr | None = None
 
     COMPLIED_INTENT_ANALYSIS_PROGRAM_PATH: str | None = None
-    COMPLIED_PREREQUISITE_ANALYSIS_PROGRAM_PATH: str | None = None
 
-    # NOTICE: EMBEDDING_DIMS and EMBEDDING_MAX_TOKENS is deprecated and
-    # will be removed in the future.
-    EMBEDDING_DIMS: int = 1536
-    EMBEDDING_MAX_TOKENS: int = 2048
-
-    EVALUATION_OPENAI_API_KEY: str | None = None
+    # Currently, we only support 1536 dims for the embedding model
+    EMBEDDOMG_DIMS: int = 1536
 
     @computed_field  # type: ignore[misc]
     @property
@@ -111,9 +90,7 @@ class Settings(BaseSettings):
         return MultiHostUrl.build(
             scheme="mysql+pymysql",
             username=self.TIDB_USER,
-            # TODO: remove quote after following issue is fixed:
-            # https://github.com/pydantic/pydantic/issues/8061
-            password=quote(self.TIDB_PASSWORD),
+            password=self.TIDB_PASSWORD,
             host=self.TIDB_HOST,
             port=self.TIDB_PORT,
             path=self.TIDB_DATABASE,
@@ -128,7 +105,7 @@ class Settings(BaseSettings):
         return MultiHostUrl.build(
             scheme="mysql+asyncmy",
             username=self.TIDB_USER,
-            password=quote(self.TIDB_PASSWORD),
+            password=self.TIDB_PASSWORD,
             host=self.TIDB_HOST,
             port=self.TIDB_PORT,
             path=self.TIDB_DATABASE,
@@ -139,7 +116,7 @@ class Settings(BaseSettings):
         secret = self.SECRET_KEY
         if not secret:
             raise ValueError(
-                "Please set a secret key using the SECRET_KEY environment variable."
+                f"Please set a secret key using the SECRET_KEY environment variable."
             )
 
         min_length = 32

@@ -1,18 +1,6 @@
-*_dev.ipynb
 .idea
-.vscode
 .env
-.ruff_cache
 
 redis-data
 data
 venv
-.venv
-local-embedding-reranker
-
-*.swp
-*.swo
-
-.next
-node_modules/
-_pagefind/

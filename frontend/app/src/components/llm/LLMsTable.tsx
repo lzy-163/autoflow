@@ -1,20 +1,27 @@
 'use client';
 
-import { setDefault } from '@/api/commons';
-import { deleteLlm, listLlms, type LLM } from '@/api/llms';
-import { actions } from '@/components/cells/actions';
+import { listLlms, type LLM } from '@/api/llms';
+import { DataTableHeading } from '@/components/data-table-heading';
 import { DataTableRemote } from '@/components/data-table-remote';
 import { Badge } from '@/components/ui/badge';
-import { getErrorMessage } from '@/lib/errors';
+import { buttonVariants } from '@/components/ui/button';
 import type { ColumnDef } from '@tanstack/react-table';
 import { createColumnHelper } from '@tanstack/table-core';
-import { TrashIcon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import Link from 'next/link';
-import { toast } from 'sonner';
 
 export function LLMsTable () {
   return (
     <DataTableRemote
+      before={(
+        <DataTableHeading>
+          <span className="ml-auto" />
+          <Link className={buttonVariants({ variant: 'default', className: 'gap-2' })} href="/llms/create">
+            <PlusIcon className="size-4" />
+            New
+          </Link>
+        </DataTableHeading>
+      )}
       columns={columns}
       apiKey="api.llms.list"
       api={listLlms}
@@ -25,12 +32,8 @@ export function LLMsTable () {
 
 const helper = createColumnHelper<LLM>();
 const columns: ColumnDef<LLM, any>[] = [
-  helper.accessor('id', {
-    header: 'ID',
-    cell: ({ row }) => row.original.id,
-  }),
   helper.accessor('name', {
-    header: 'NAME',
+    header: 'Name',
     cell: ({ row }) => {
       const { id, name, is_default } = row.original;
       return (
@@ -42,52 +45,15 @@ const columns: ColumnDef<LLM, any>[] = [
     },
   }),
   helper.display({
-    header: 'PROVIDER / MODEL',
+    header: 'Provider / Model',
     cell: ({ row }) => {
       const { model, provider } = row.original;
       return (
-        <>
-          <strong>{provider}</strong>/<span>{model}</span>
-        </>
+        <span className="flex gap-1 items-center">
+          <Badge variant="secondary">{provider}</Badge>
+          <Badge variant="outline">{model}</Badge>
+        </span>
       );
     },
-  }),
-  helper.display({
-    id: 'Operations',
-    header: 'ACTIONS',
-    cell: actions(row => ([
-      {
-        key: 'set-default',
-        title: 'Set Default',
-        disabled: row.is_default,
-        action: async (context) => {
-          try {
-            await setDefault('llms', row.id);
-            context.table.reload?.();
-            context.startTransition(() => {
-              context.router.refresh();
-            });
-            context.setDropdownOpen(false);
-            toast.success(`Successfully set default LLM to ${row.name}.`);
-          } catch (e) {
-            toast.error(`Failed to set default LLM to ${row.name}.`, {
-              description: getErrorMessage(e),
-            });
-            throw e;
-          }
-        },
-      },
-      {
-        key: 'delete',
-        action: async ({ table, setDropdownOpen }) => {
-          await deleteLlm(row.id);
-          table.reload?.();
-          setDropdownOpen(false);
-        },
-        title: 'Delete',
-        icon: <TrashIcon className="size-3" />,
-        dangerous: {},
-      },
-    ])),
   }),
 ];

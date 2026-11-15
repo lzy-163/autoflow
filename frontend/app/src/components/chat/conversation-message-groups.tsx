@@ -1,17 +1,13 @@
-import { type ChatMessageGroup, useChatInfo, useChatPostState, useCurrentChatController } from '@/components/chat/chat-hooks';
+import { type ChatMessageGroup, useChatPostState, useCurrentChatController } from '@/components/chat/chat-hooks';
 import { DebugInfo } from '@/components/chat/debug-info';
-import { MessageAnnotationHistory } from '@/components/chat/message-annotation-history';
-import { StackVMMessageAnnotationHistory } from '@/components/chat/message-annotation-history-stackvm';
-import { MessageAnswer } from '@/components/chat/message-answer';
-import { MessageAutoScroll } from '@/components/chat/message-auto-scroll';
+import { MessageAnnotation } from '@/components/chat/message-annotation';
+import { MessageContent } from '@/components/chat/message-content';
 import { MessageContextSources } from '@/components/chat/message-content-sources';
 import { MessageError } from '@/components/chat/message-error';
+import { MessageHeading } from '@/components/chat/message-heading';
 import { MessageOperations } from '@/components/chat/message-operations';
-import { MessageRecommendQuestions } from '@/components/chat/message-recommend-questions';
-import { MessageSection } from '@/components/chat/message-section';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { MessageVerify } from '@/experimental/chat-verify-service/message-verify';
 import { cn } from '@/lib/utils';
 import { InfoIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -53,7 +49,6 @@ export function ConversationMessageGroups ({ groups }: { groups: ChatMessageGrou
         <ConversationMessageGroup
           key={group.user.id}
           group={group}
-          isLastGroup={index === groups.length - 1}
         />
       ))}
       {!!params && !initialized && (
@@ -69,11 +64,8 @@ export function ConversationMessageGroups ({ groups }: { groups: ChatMessageGrou
   );
 }
 
-function ConversationMessageGroup ({ group, isLastGroup }: { group: ChatMessageGroup, isLastGroup: boolean }) {
-  const enableDebug = /* !!me && */ !process.env.NEXT_PUBLIC_DISABLE_DEBUG_PANEL;
-  const { engine_options } = useChatInfo(useCurrentChatController()) ?? {};
-
-  const { params } = useChatPostState(useCurrentChatController());
+function ConversationMessageGroup ({ group }: { group: ChatMessageGroup }) {
+  const enableDebug = !process.env.NEXT_PUBLIC_DISABLE_DEBUG_PANEL;
 
   const [debugInfoOpen, setDebugInfoOpen] = useState(false);
   const [highlight, setHighlight] = useState(false);
@@ -92,7 +84,7 @@ function ConversationMessageGroup ({ group, isLastGroup }: { group: ChatMessageG
     >
       <Collapsible open={debugInfoOpen} onOpenChange={setDebugInfoOpen}>
         <div className="relative pr-12">
-          <h2 className="text-2xl font-normal whitespace-pre-wrap">{group.user.content}</h2>
+          <h2 className="text-2xl font-normal">{group.user.content}</h2>
           {enableDebug && <CollapsibleTrigger asChild>
             <Button className="absolute right-0 top-0 z-0 rounded-full" variant="ghost" size="sm">
               <InfoIcon className="h-4 w-4" />
@@ -105,28 +97,14 @@ function ConversationMessageGroup ({ group, isLastGroup }: { group: ChatMessageG
         </CollapsibleContent>
       </Collapsible>
 
-      {group.assistant?.version === 'Legacy' && <MessageAnnotationHistory message={group.assistant} />}
-      {group.assistant?.version === 'StackVM' && <StackVMMessageAnnotationHistory message={group.assistant} />}
-
-      {!engine_options?.hide_sources && <MessageSection className="!mt-1" message={group.assistant}>
-        <MessageContextSources message={group.assistant} />
-      </MessageSection>}
-
-      <MessageSection className="space-y-2" message={group.assistant}>
-        <MessageAnswer message={group.assistant} showBetaAlert={group.hasFirstAssistantMessage} />
-        {group.assistant && <MessageAutoScroll message={group.assistant} />}
-      </MessageSection>
-
-      {group.assistant && <MessageError message={group.assistant} />}
-
+      <MessageContextSources message={group.assistant} />
+      <section className="space-y-2">
+        <MessageHeading />
+        {group.assistant && <MessageError message={group.assistant} />}
+        <MessageContent message={group.assistant} />
+        <MessageAnnotation message={group.assistant} />
+      </section>
       {group.assistant && <MessageOperations message={group.assistant} />}
-
-      <MessageVerify assistant={group.assistant} />
-
-      {/* Only show recommend questions if enabled in engine_options */}
-      {!params && isLastGroup && group.hasLastAssistantMessage && engine_options?.further_questions !== false && (
-        <MessageRecommendQuestions assistant={group.assistant} />
-      )}
     </section>
   );
 }
