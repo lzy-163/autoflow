@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader } from '@/components/loader';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataTableProvider } from '@/components/use-data-table';
 import { cn } from '@/lib/utils';
@@ -23,7 +22,6 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   classNames?: DataTableClassNames;
-  loading?: boolean
 }
 
 export function DataTable<TData, TValue> ({
@@ -34,7 +32,6 @@ export function DataTable<TData, TValue> ({
   before,
   after,
   classNames,
-  loading,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -45,7 +42,7 @@ export function DataTable<TData, TValue> ({
   return (
     <DataTableProvider value={table}>
       {before}
-      <div className={cn('rounded-md border relative', className)}>
+      <div className={cn('rounded-md border', className)}>
         <Table className="text-xs whitespace-nowrap">
           {!hideHeader && <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -89,7 +86,6 @@ export function DataTable<TData, TValue> ({
             )}
           </TableBody>
         </Table>
-        <Loader loading={!!loading} />
       </div>
       {after}
     </DataTableProvider>

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException
 from http import HTTPStatus
 from pydantic import BaseModel
 
 from app.api.deps import SessionDep, OptionalUserDep
-from app.models import FeedbackType, Feedback
+from app.models import FeedbackType, Feedback, ChatMessage
 from app.repositories import chat_repo
 
 router = APIRouter()
@@ -22,8 +22,6 @@ def feedback(
     user: OptionalUserDep,
     chat_message_id: int,
     request: FeedbackRequest,
-    origin: str = Header(None),
-    referer: str = Header(None),
 ):
     chat_message = chat_repo.get_message(session, chat_message_id)
     if not chat_message:
@@ -36,7 +34,6 @@ def feedback(
         chat_message_id=chat_message_id,
         chat_id=chat_message.chat_id,
         user_id=user.id if user else None,
-        origin=origin or referer,
     )
     session.add(feedback)
     session.commit()

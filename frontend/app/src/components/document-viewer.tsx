@@ -1,12 +1,12 @@
-import './code-theme.scss';
-
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { PromptViewer } from '@/components/chat-engine/prompt-viewer';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
 import Highlight from 'highlight.js/lib/core';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import markdown from 'highlight.js/lib/languages/markdown';
+import './code-theme.scss';
 
 export interface DocumentPreviewProps {
   content: string;
@@ -29,12 +29,12 @@ export function DocumentViewer ({ content, mime }: DocumentPreviewProps) {
 
 const nf = new Intl.NumberFormat('en-US');
 
-export function DocumentPreviewDialog ({ title, name, mime, content }: { title: string, name: string, mime: string, content: string }) {
+export function DocumentPreviewDialog ({ title, mime, content }: { title: string, mime: string, content: string }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="text-xs p-2 font-normal font-mono h-6" variant="ghost" size="sm">
-          {name} <span className="text-muted-foreground">({nf.format(content.length)} characters)</span>
+        <Button className='text-xs' variant="ghost" size="sm">
+          Show content ({nf.format(content.length)} characters)
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-[720px] w-full">
@@ -42,7 +42,6 @@ export function DocumentPreviewDialog ({ title, name, mime, content }: { title: 
           <DialogTitle>
             {title}
           </DialogTitle>
-          <DialogDescription className="sr-only" />
         </DialogHeader>
         <ScrollArea className="h-[80vh]">
           <DocumentViewer mime={mime} content={content} />
@@ -58,7 +57,7 @@ function MarkdownViewer ({ value: propValue }: { value: string }) {
   useEffect(() => {
     setValue(propValue);
     try {
-      const { value: result } = Highlight.highlight(propValue, { language: 'markdown' });
+      const { value: result } = Highlight.highlight('markdown', propValue);
       setValue(result);
     } catch {
     }

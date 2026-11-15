@@ -4,11 +4,7 @@ import { FeedbacksTable } from '@/components/feedbacks/feedbacks-table';
 export default function ChatEnginesPage () {
   return (
     <>
-      <AdminPageHeading
-        breadcrumbs={[
-          { title: 'Feedbacks' },
-        ]}
-      />
+      <AdminPageHeading title="Feedbacks" />
       <FeedbacksTable />
     </>
   );

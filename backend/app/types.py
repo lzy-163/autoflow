@@ -1,11 +1,18 @@
 import enum
 
 
-class MimeTypes(str, enum.Enum):
-    PLAIN_TXT = "text/plain"
-    MARKDOWN = "text/markdown"
-    PDF = "application/pdf"
-    DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    CSV = "text/csv"
+class LLMProvider(str, enum.Enum):
+    OPENAI = "openai"
+    GEMINI = "gemini"
+    ANTHROPIC_VERTEX = "anthropic_vertex"
+    OPENAI_LIKE = "openai_like"
+    BEDROCK = "bedrock"
+
+
+class EmbeddingProvider(str, enum.Enum):
+    OPENAI = "openai"
+
+
+class RerankerProvider(str, enum.Enum):
+    JINA = "jina"
+    COHERE = "cohere"

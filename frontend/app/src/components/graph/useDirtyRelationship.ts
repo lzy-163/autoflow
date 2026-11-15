@@ -4,7 +4,7 @@ import { useAction } from './action';
 import { type Relationship } from './utils';
 import type { JsonFieldInstance } from './components/JsonField';
 
-export function useDirtyRelationship (kbId: number, id: any) {
+export function useDirtyRelationship (id: any) {
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const weightRef = useRef<HTMLInputElement>(null);
   const metaRef = useRef<JsonFieldInstance | null>(null);
@@ -16,7 +16,7 @@ export function useDirtyRelationship (kbId: number, id: any) {
       throw new Error('bad editor state');
     }
 
-    return await updateRelationship(kbId, id, current);
+    return await updateRelationship(id, current);
   });
 
   const reset = (relationship: Relationship) => {

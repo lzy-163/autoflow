@@ -12,6 +12,7 @@ RUN mkdir -p frontend/app
 RUN mkdir -p frontend/packages/widget-react
 
 # Install dependencies based on the preferred package manager
+COPY README.md .
 COPY frontend/package.json ./frontend
 COPY frontend/pnpm-*.yaml ./frontend
 COPY frontend/patches/* ./frontend/patches
@@ -20,7 +21,6 @@ COPY frontend/packages/widget-react/package.json ./frontend/packages/widget-reac
 
 WORKDIR /tidb.ai/frontend
 
-RUN npm install -g corepack@latest
 RUN corepack enable pnpm
 RUN pnpm i --frozen-lockfile
 
@@ -41,13 +41,14 @@ COPY . .
 
 WORKDIR /tidb.ai/frontend
 
-ENV BASE_URL=""
-ENV SITE_URL=""
+ENV BASE_URL ""
+ENV NEXT_PUBLIC_BASE_URL ""
+ENV SITE_URL ""
 
 RUN rm -f app/.env
 RUN echo BASE_URL=${BASE_URL:-'""'} >> app/.env.production
+RUN echo NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-'""'} >> app/.env.production
 
-RUN npm install -g corepack@latest
 RUN corepack enable pnpm
 RUN pnpm run build:docker
 RUN pnpm run build:widget-react
@@ -57,8 +58,8 @@ FROM base AS runner
 WORKDIR /tidb.ai
 
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
+ENV PORT 3000
+ENV HOSTNAME 0.0.0.0
 
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
@@ -73,4 +74,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "app/server.js"]
+CMD node app/server.js

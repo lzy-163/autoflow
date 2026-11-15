@@ -1,9 +1,7 @@
 import { type Chat, type ChatMessage, ChatMessageRole } from '@/api/chats';
 import { isBootstrapStatusPassed } from '@/api/system';
 import { ChatController } from '@/components/chat/chat-controller';
-import { BaseChatMessageController, ChatMessageController, type ChatMessageControllerAnnotationState, type OngoingState, type OngoingStateHistoryItem } from '@/components/chat/chat-message-controller';
-import type { AppChatStreamState, StackVMState } from '@/components/chat/chat-stream-state';
-import { useGtagFn } from '@/components/gtag-provider';
+import { ChatMessageController, type OngoingState } from '@/components/chat/chat-message-controller';
 import { useBootstrapStatus } from '@/components/system/BootstrapStatusProvider';
 import { useLatestRef } from '@/components/use-latest-ref';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
@@ -30,7 +28,7 @@ const ChatsContext = createContext<ChatsProviderValues>({
 
 const ChatControllerContext = createContext<ChatController | null>(null);
 
-export function ChatsProvider ({ onChatCreated, children }: { children: ReactNode, /** @deprecated */onChatCreated?: (id: string, chat: Chat, controller: ChatController) => void }) {
+export function ChatsProvider ({ children }: { children: ReactNode }) {
   const bootstrapStatusRef = useLatestRef(useBootstrapStatus());
   const [chats, setChats] = useState(() => new Map<string, ChatController>);
 
@@ -42,7 +40,6 @@ export function ChatsProvider ({ onChatCreated, children }: { children: ReactNod
     const controller = new ChatController(...args);
     controller.once('created', (chat) => {
       setChats(chats => new Map(chats).set(chat.id, controller));
-      onChatCreated?.(chat.id, chat, controller);
     });
 
     return controller;
@@ -84,37 +81,24 @@ export function useChats () {
 export interface ChatMessageGroup {
   user: ChatMessageController;
   assistant: ChatMessageController | undefined;
-  hasFirstAssistantMessage: boolean;
-  hasLastAssistantMessage: boolean;
-  hasLastUserMessage: boolean;
 }
 
-export function useChatController (
-  id: string | undefined,
-  initialChat: Chat | undefined,
-  initialMessages: ChatMessage[] | undefined,
-  inputElement: HTMLInputElement | HTMLTextAreaElement | null = null,
-) {
-  const gtagFn = useGtagFn();
-  const { chats } = useChats();
+export function useChatController (id: string | undefined, initialChat: Chat | undefined, initialMessages: ChatMessage[] | undefined) {
+  const { chats, newChat } = useChats();
 
   // Create essential chat controller
-  const [controller] = useState(() => {
+  const [controller, setController] = useState(() => {
     if (id) {
       let controller = chats.get(id);
       if (!controller) {
-        controller = new ChatController(initialChat, initialMessages, undefined, inputElement, gtagFn);
+        controller = new ChatController(initialChat, initialMessages);
         chats.set(id, controller);
       }
       return controller;
     } else {
-      return new ChatController(undefined, undefined, undefined, inputElement, gtagFn);
+      return new ChatController(undefined, undefined, undefined);
     }
   });
-
-  useEffect(() => {
-    controller.inputElement = inputElement;
-  }, [controller, inputElement]);
 
   return controller;
 }
@@ -217,9 +201,6 @@ function collectMessageGroups (messageControllers: ChatMessageController[]) {
           groups.push({
             user,
             assistant: messageController,
-            hasFirstAssistantMessage: false,
-            hasLastAssistantMessage: false,
-            hasLastUserMessage: false,
           });
         } else {
           console.warn('No matched user message, drop assistant message', messageController.message.id);
@@ -228,18 +209,6 @@ function collectMessageGroups (messageControllers: ChatMessageController[]) {
     }
   }
 
-  let group = groups.findLast(group => !!group.assistant);
-  if (group) {
-    group.hasLastAssistantMessage = true;
-  }
-  group = groups.find(group => !!group.assistant);
-  if (group) {
-    group.hasFirstAssistantMessage = true;
-  }
-  group = groups.findLast(group => !!group.user);
-  if (group) {
-    group.hasLastUserMessage = true;
-  }
   return groups;
 }
 
@@ -281,19 +250,19 @@ export function useChatMessageField (controller: ChatMessageController | undefin
     } else {
       setValue(undefined);
     }
-  }, [controller, key]);
+  }, [controller]);
 
   return value;
 }
 
-export function useChatMessageStreamState<C extends ChatMessageController> (controller: C | undefined): OngoingState<ChatMessageControllerAnnotationState<C>> | undefined {
+export function useChatMessageStreamState (controller: ChatMessageController | undefined): OngoingState | undefined {
   const [state, setState] = useState(controller?.ongoing);
 
   useEffect(() => {
     if (controller) {
       setState(controller.ongoing);
 
-      const handleUpdate = (_: any, state?: OngoingState<AppChatStreamState | StackVMState>) => setState(state);
+      const handleUpdate = (_: any, state?: OngoingState) => setState(state);
 
       controller
         .on('stream-update', handleUpdate)
@@ -311,46 +280,5 @@ export function useChatMessageStreamState<C extends ChatMessageController> (cont
     }
   }, [controller]);
 
-  return state as OngoingState<ChatMessageControllerAnnotationState<C>>;
-}
-
-export function useChatMessageStreamHistoryStates<C extends BaseChatMessageController<any, any>> (controller: C | undefined): C['ongoingHistory'] {
-  const [state, setState] = useState(controller?.ongoingHistory);
-
-  useEffect(() => {
-    if (controller) {
-      setState(controller.ongoingHistory);
-
-      const handleUpdate = (_: any, state?: OngoingStateHistoryItem[]) => {
-        if (state) {
-          setState(state);
-        }
-      };
-
-      controller
-        .on('stream-history-update', handleUpdate)
-        .on('stream-finished', handleUpdate);
-
-      return () => {
-        controller
-          .off('stream-history-update', handleUpdate)
-          .off('stream-finished', handleUpdate);
-      };
-    } else {
-      setState(undefined);
-    }
-  }, [controller]);
-
   return state;
-}
-
-export function useChatMessageStreamContainsState (controller: ChatMessageController | undefined, state: AppChatStreamState) {
-  const history = useChatMessageStreamHistoryStates(controller);
-  const current = useChatMessageStreamState(controller);
-
-  // FIXME: what if state not triggered?
-  if (!current || current.finished) {
-    return true;
-  }
-  return history?.some(item => item.state.state === state) || current?.state === state;
 }

@@ -1,4 +1,10 @@
-import { z } from 'zod';
+import {z} from "zod";
+
+export const reCaptcha = [
+  {label: 'V3', value: 'v3'},
+  {label: 'Enterprise', value: 'enterprise'},
+  {label: 'None', value: ''},
+] as const;
 
 export const reCaptchas = z.enum(['', 'v3', 'enterprise']);
 
@@ -11,3 +17,4 @@ export const SecuritySetting = z.object({
 
 export const SecuritySettingResult = SecuritySetting.partial();
 export type ISecuritySettingResult = z.infer<typeof SecuritySettingResult>;
+export const SecuritySettingUpdatePayload = SecuritySetting.partial();

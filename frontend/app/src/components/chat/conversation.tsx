@@ -8,7 +8,8 @@ import { MessageInput } from '@/components/chat/message-input';
 import { SecuritySettingContext, withReCaptcha } from '@/components/security-setting-provider';
 import { useSize } from '@/components/use-size';
 import { cn } from '@/lib/utils';
-import { type ChangeEvent, type FormEvent, type ReactNode, type Ref, useContext, useImperativeHandle, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useContext, useEffect, useState } from 'react';
+
 
 export interface ConversationProps {
   chatId?: string;
@@ -22,13 +23,10 @@ export interface ConversationProps {
   placeholder?: (controller: ChatController, postState: ReturnType<typeof useChatPostState>) => ReactNode;
   preventMutateBrowserHistory?: boolean;
   preventShiftMessageInput?: boolean;
-  newChatRef?: Ref<ChatController['post'] | undefined>;
 }
 
-export function Conversation ({ open, chat, chatId, history, placeholder, preventMutateBrowserHistory = false, preventShiftMessageInput = false, newChatRef, className }: ConversationProps) {
-  const [inputElement, setInputElement] = useState<HTMLTextAreaElement | null>(null);
-
-  const controller = useChatController(chatId, chat, history, inputElement);
+export function Conversation ({ open, chat, chatId, history, placeholder, preventMutateBrowserHistory = false, preventShiftMessageInput = false, className }: ConversationProps) {
+  const controller = useChatController(chatId, chat, history);
   const postState = useChatPostState(controller);
   const groups = useChatMessageGroups(useChatMessageControllers(controller));
 
@@ -60,11 +58,6 @@ export function Conversation ({ open, chat, chatId, history, placeholder, preven
   };
 
   const disabled = !!postState.params;
-  const actionDisabled = disabled || !input.trim();
-
-  useImperativeHandle(newChatRef, () => {
-    return controller.post.bind(controller);
-  }, [controller]);
 
   return (
     <ChatControllerProvider controller={controller}>
@@ -76,8 +69,8 @@ export function Conversation ({ open, chat, chatId, history, placeholder, preven
         <ConversationMessageGroups groups={groups} />
         <div className="h-24"></div>
       </div>
-      {size && open && <form className={cn('block h-max p-4 fixed bottom-0', preventShiftMessageInput && 'absolute pb-0')} onSubmit={submitWithReCaptcha} style={{ left: (preventShiftMessageInput ? 0 : size.x) + 16, width: size.width - 32 }}>
-        <MessageInput inputRef={setInputElement} className="w-full transition-all" disabled={disabled} actionDisabled={actionDisabled} inputProps={{ value: input, onChange: handleInputChange, disabled }} />
+      {size && open && <form className={cn('block h-max p-4 fixed bottom-0', preventShiftMessageInput && 'absolute pb-0')} onSubmit={submitWithReCaptcha} style={{ left: preventShiftMessageInput ? 0 : size.x, width: size.width }}>
+        <MessageInput className="w-full transition-all" disabled={disabled} inputProps={{ value: input, onChange: handleInputChange, disabled }} />
       </form>}
     </ChatControllerProvider>
   );

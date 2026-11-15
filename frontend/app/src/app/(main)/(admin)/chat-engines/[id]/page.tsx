@@ -1,32 +1,21 @@
-import { getChatEngine, getDefaultChatEngineOptions } from '@/api/chat-engines';
-
+import { getChatEngine } from '@/api/chat-engines';
 import { AdminPageHeading } from '@/components/admin-page-heading';
-import { UpdateChatEngineForm } from '@/components/chat-engine/update-chat-engine-form';
-import { getBootstrapStatus } from '@/api/system';
+import { ChatEngineDetails } from '@/components/chat-engine/chat-engine-details';
+import { Card, CardContent } from '@/components/ui/card';
 
-export default async function ChatEnginePage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-  const [chatEngine, defaultChatEngineOptions, bootstrapStatus] = await Promise.all([
-    getChatEngine(parseInt(params.id)),
-    getDefaultChatEngineOptions(),
-    getBootstrapStatus(),
-  ]);
+export default async function ChatEnginePage ({ params }: { params: { id: string } }) {
+  const chatEngine = await getChatEngine(parseInt(params.id));
 
   return (
     <>
-      <AdminPageHeading
-        breadcrumbs={[
-          { title: 'Chat Engines', docsUrl: 'https://autoflow.tidb.ai/chat-engine', url: '/chat-engines' },
-          {
-            title: chatEngine.name,
-            alert: bootstrapStatus.need_migration.chat_engines_without_kb_configured?.includes(chatEngine.id) ? {
-              variant: 'warning',
-              content: 'KnowledgeBase not configured',
-            } : undefined,
-          },
-        ]}
-      />
-      <UpdateChatEngineForm chatEngine={chatEngine} defaultChatEngineOptions={defaultChatEngineOptions} />
+      <AdminPageHeading title={`Chat Engine - ${chatEngine.name}`} />
+      <div className="xl:pr-side max-w-screen-lg">
+        <Card>
+          <CardContent className="pt-4">
+            <ChatEngineDetails chatEngine={chatEngine} />
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }

@@ -3,13 +3,10 @@ from typing import Optional
 
 from sqlmodel import (
     Field,
-    Column,
-    String,
     Relationship as SQLRelationship,
 )
 
 from app.models.base import UpdatableBaseModel
-from app.types import MimeTypes
 
 
 class Upload(UpdatableBaseModel, table=True):
@@ -17,9 +14,9 @@ class Upload(UpdatableBaseModel, table=True):
     name: str = Field(max_length=255)
     size: int = Field(default=0)
     path: str = Field(max_length=255)
-    mime_type: MimeTypes = Field(sa_column=Column(String(128), nullable=False))
+    mime_type: str = Field(max_length=64, default="text/plain")
     user_id: UUID = Field(foreign_key="users.id", nullable=True)
-    user: "User" = SQLRelationship(  # noqa:F821
+    user: "User" = SQLRelationship(
         sa_relationship_kwargs={
             "lazy": "joined",
             "primaryjoin": "Upload.user_id == User.id",

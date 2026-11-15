@@ -8,7 +8,7 @@ import { filesize } from 'filesize';
 import { FileMinus2Icon } from 'lucide-react';
 import { type ChangeEvent, forwardRef, useId } from 'react';
 
-export interface FilesInputProps extends FormControlWidgetProps<File[]> {
+export interface FilesInputProps extends FormControlWidgetProps {
   accept: string[];
 }
 
@@ -20,7 +20,7 @@ export const FilesInput = forwardRef<any, FilesInputProps>(({
   id,
   disabled,
   onBlur,
-  value: files = [],
+  value: files,
   onChange: onFilesChange,
   ...props
 }, ref) => {

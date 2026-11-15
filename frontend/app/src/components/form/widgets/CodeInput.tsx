@@ -1,15 +1,15 @@
 import type { FormControlWidgetProps } from '@/components/form/control-widget';
-import { useActiveTheme } from '@/components/use-active-theme';
 import { cn } from '@/lib/utils';
 import { Loader2Icon } from 'lucide-react';
 import mergeRefs from 'merge-refs';
 import type * as monaco from 'monaco-editor';
+import { useTheme } from 'next-themes';
 import { forwardRef, useEffect, useRef, useState } from 'react';
 
-export interface CodeInputProps extends FormControlWidgetProps<string> {
+export interface CodeInputProps extends FormControlWidgetProps {
   className?: string;
   placeholder?: string;
-  language: 'json' | 'markdown';
+  language: 'json';
 }
 
 export const CodeInput = forwardRef<any, CodeInputProps>(({
@@ -25,12 +25,12 @@ export const CodeInput = forwardRef<any, CodeInputProps>(({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
 }, forwardedRef) => {
-  const monacoRef = useRef<typeof monaco>(undefined);
+  const monacoRef = useRef<typeof monaco>();
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | undefined>(undefined);
 
   // useImperativeHandle(forwardedRef, () => editor, [editor]);
 
-  const theme = useActiveTheme();
+  const { theme } = useTheme();
 
   const ref = useRef<HTMLDivElement>(null);
 
@@ -51,7 +51,6 @@ export const CodeInput = forwardRef<any, CodeInputProps>(({
           glyphMargin: false,
           lineDecorationsWidth: 0,
           lineNumbersMinChars: 2,
-          scrollBeyondLastLine: false,
           minimap: {
             enabled: false,
           },
@@ -78,7 +77,7 @@ export const CodeInput = forwardRef<any, CodeInputProps>(({
 
   useEffect(() => {
     if (editor && onChange) {
-      const { dispose } = editor.onDidChangeModelContent(() => onChange(editor.getValue()));
+      const { dispose } = editor.onEndUpdate(() => onChange(editor.getValue()));
       return dispose;
     }
   }, [editor, onChange]);
