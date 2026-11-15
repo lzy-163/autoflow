@@ -1,6 +1,5 @@
-import { authenticationHeaders, handleResponse, requestUrl } from '@/lib/request';
+import { authenticationHeaders, BASE_URL, buildUrlParams, handleResponse } from '@/lib/request';
 import { zodJsonDate } from '@/lib/zod';
-import { bufferedReadableStreamTransformer } from '@/lib/buffered-readable-stream';
 import { z, type ZodType } from 'zod';
 
 export interface KnowledgeGraph {
@@ -15,7 +14,6 @@ export const enum KnowledgeGraphEntityType {
 
 export interface KnowledgeGraphEntity {
   id: number;
-  knowledge_base_id?: number | null;
   name: string;
   description: string;
   meta: object;
@@ -30,7 +28,6 @@ export interface KnowledgeGraphRelationship {
   id: number;
   source_entity_id: number;
   target_entity_id: number;
-  knowledge_base_id?: number | null;
   description: string;
   meta: object;
   weight: number;
@@ -38,7 +35,6 @@ export interface KnowledgeGraphRelationship {
 
 export const entitySchema = z.object({
   id: z.number(),
-  knowledge_base_id: z.number().nullable().optional(),
   name: z.string(),
   description: z.string(),
   meta: z.object({}).passthrough(),
@@ -51,7 +47,6 @@ export const entitySchema = z.object({
 
 export const relationshipSchema = z.object({
   id: z.number(),
-  knowledge_base_id: z.number().nullable().optional(),
   source_entity_id: z.number(),
   target_entity_id: z.number(),
   description: z.string(),
@@ -92,26 +87,8 @@ export interface GraphSearchParams {
   with_degree?: boolean;
 }
 
-export interface KBRetrieveKnowledgeGraphParams {
-  query: string;
-  llm_id: number;
-  retrieval_config: {
-    knowledge_graph: KnowledgeGraphRetrievalConfig;
-  }
-}
-
-export interface KnowledgeGraphRetrievalConfig {
-  depth?: number;
-  include_meta?: boolean;
-  with_degree?: boolean;
-  metadata_filter?: {
-    enabled?: boolean;
-    filters?: Record<string, any>
-  }
-}
-
-export async function search (kbId: number, params: GraphSearchParams) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/search`), {
+export async function search (params: GraphSearchParams) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/search`, {
     method: 'post',
     headers: {
       ...await authenticationHeaders(),
@@ -121,8 +98,8 @@ export async function search (kbId: number, params: GraphSearchParams) {
   }).then(handleResponse(knowledgeGraphSchema));
 }
 
-export async function searchEntity (kbId: number, query: string, top_k: number = 10) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entities/search`, { query, top_k }), {
+export async function searchEntity (query: string, top_k: number = 10) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/entities/search?${buildUrlParams({ query, top_k }).toString()}`, {
     headers: {
       ...await authenticationHeaders(),
     },
@@ -130,8 +107,8 @@ export async function searchEntity (kbId: number, query: string, top_k: number =
     .then(handleResponse(entitySchema.array()));
 }
 
-export async function getEntity (kbId: number, id: number) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entities/${id}`), {
+export async function getEntity (id: number) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/entities/${id}`, {
     headers: {
       ...await authenticationHeaders(),
     },
@@ -139,8 +116,8 @@ export async function getEntity (kbId: number, id: number) {
     .then(handleResponse(entitySchema));
 }
 
-export async function updateEntity (kbId: number, id: number, params: UpdateEntityParams) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entities/${id}`), {
+export async function updateEntity (id: number, params: UpdateEntityParams) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/entities/${id}`, {
     method: 'put',
     headers: {
       ...await authenticationHeaders(),
@@ -150,8 +127,8 @@ export async function updateEntity (kbId: number, id: number, params: UpdateEnti
   }).then(handleResponse(entitySchema));
 }
 
-export async function createSynopsisEntity (kbId: number, params: CreateSynopsisEntityParams) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entities/synopsis`), {
+export async function createSynopsisEntity (params: CreateSynopsisEntityParams) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/entities/synopsis`, {
     method: 'post',
     headers: {
       ...await authenticationHeaders(),
@@ -161,8 +138,8 @@ export async function createSynopsisEntity (kbId: number, params: CreateSynopsis
   }).then(handleResponse(entitySchema));
 }
 
-export async function getEntitySubgraph (kbId: number, id: number) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entities/${id}/subgraph`), {
+export async function getEntitySubgraph (id: number) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/entities/${id}/subgraph`, {
     headers: {
       ...await authenticationHeaders(),
     },
@@ -170,74 +147,8 @@ export async function getEntitySubgraph (kbId: number, id: number) {
     .then(handleResponse(knowledgeGraphSchema));
 }
 
-export async function getEntireKnowledgeGraph (kbId: number, params: KBRetrieveKnowledgeGraphParams) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entire_graph`), {
-    method: 'post',
-    headers: {
-      ...await authenticationHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params),
-  })
-  .then(handleResponse(knowledgeGraphSchema));
-}
-
-export async function streamEntireKnowledgeGraph (kbId: number): Promise<KnowledgeGraph> {
-  const entities: KnowledgeGraphEntity[] = [];
-  const relationships: KnowledgeGraphRelationship[] = [];
-  
-  const response = await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/entire_graph/stream`), {
-    method: 'GET',
-    headers: await authenticationHeaders(),
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  
-  if (!response.body) {
-    throw new Error('Empty response body');
-  }
-  
-  const reader = response.body.pipeThrough(bufferedReadableStreamTransformer()).getReader();
-  
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      if (value.trim() && value.startsWith('data: ')) {
-        const dataStr = value.substring(6).trim();
-        if (dataStr) {
-          try {
-            const data = JSON.parse(dataStr);
-            
-            if (data.type === 'entities') {
-              entities.push(...data.data);
-              // console.log(`Received ${data.data.length} entities, total: ${entities.length}`);
-            } else if (data.type === 'relationships') {
-              relationships.push(...data.data);
-              // console.log(`Received ${data.data.length} relationships, total: ${relationships.length}`);
-            } else if (data.type === 'complete') {
-              // console.log(`Streaming complete. Final counts - entities: ${entities.length}, relationships: ${relationships.length}`);
-              return { entities, relationships };
-            }
-          } catch (error) {
-            console.warn('Failed to parse streaming data:', error, 'Data:', dataStr);
-          }
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  
-  return { entities, relationships };
-}
-
-export async function getRelationship (kbId: number, id: number) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/relationships/${id}`), {
+export async function getRelationship (id: number) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/relationships/${id}`, {
     headers: {
       ...await authenticationHeaders(),
     },
@@ -245,8 +156,8 @@ export async function getRelationship (kbId: number, id: number) {
     .then(handleResponse(relationshipSchema));
 }
 
-export async function updateRelationship (kbId: number, id: number, params: UpdateRelationshipParams) {
-  return await fetch(requestUrl(`/api/v1/admin/knowledge_bases/${kbId}/graph/relationships/${id}`), {
+export async function updateRelationship (id: number, params: UpdateRelationshipParams) {
+  return await fetch(`${BASE_URL}/api/v1/admin/graph/relationships/${id}`, {
     method: 'put',
     headers: {
       ...await authenticationHeaders(),

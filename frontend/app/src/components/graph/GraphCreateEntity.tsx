@@ -20,10 +20,7 @@ import z from 'zod';
 
 const JsonEditor = lazy(() => import('./components/JsonEditor').then(res => ({ default: res.JsonEditor })));
 
-/**
- * @deprecated
- */
-export function GraphCreateEntity ({ className, knowledgeBaseId, onCreated }: { className?: string, knowledgeBaseId: number, onCreated: (entity: KnowledgeGraphEntity) => void }) {
+export function GraphCreateEntity ({ className, onCreated }: { className?: string, onCreated: (entity: KnowledgeGraphEntity) => void }) {
   const useEntitiesReturns = useEntities();
   const { clearSelection, ...useEntitiesRequired } = useEntitiesReturns;
   const { selectedEntities } = useEntitiesRequired;
@@ -34,14 +31,14 @@ export function GraphCreateEntity ({ className, knowledgeBaseId, onCreated }: { 
         <CreateEntityForm
           entities={selectedEntities}
           onSubmit={async (data) => {
-            const createdEntity = await createSynopsisEntity(knowledgeBaseId, data);
+            const createdEntity = await createSynopsisEntity(data);
             onCreated(createdEntity);
           }}
           onClearSelection={clearSelection}
           afterEntities={(
             <>
-              <SearchEntity knowledgeBaseId={knowledgeBaseId} {...useEntitiesRequired} />
-              <SearchEntityById knowledgeBaseId={knowledgeBaseId} {...useEntitiesRequired} />
+              <SearchEntity {...useEntitiesRequired} />
+              <SearchEntityById {...useEntitiesRequired} />
             </>
           )}
         />

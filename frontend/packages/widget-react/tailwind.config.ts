@@ -13,8 +13,6 @@ const config: Config = {
     './src/**/*.{ts,tsx}',
     '../../app/src/components/chat/**/*.{ts,tsx}',
     '../../app/src/components/ui/**/*.{ts,tsx}',
-    '../../app/src/components/remark-content/**/*.{ts,tsx}',
-    '../../app/src/experimental/chat-verify-service/**/*.{ts,tsx}',
   ],
   prefix: '',
   theme: {
@@ -36,15 +34,15 @@ const config: Config = {
         content: 'var(--content-height)',
       },
       width: {
-        side: 'var(--sidebar-width)',
+        side: 'var(--side-width)',
         content: 'var(--content-width)',
       },
       padding: {
         body: 'var(--body-padding)',
-        side: 'var(--sidebar-width)',
+        side: 'var(--side-width)',
       },
       margin: {
-        side: 'var(--sidebar-width)',
+        side: 'var(--side-width)',
       },
       colors: {
         border: 'hsl(var(--border))',

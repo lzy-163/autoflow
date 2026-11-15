@@ -1,18 +1,15 @@
 import { type ProviderOption, providerOptionSchema } from '@/api/providers';
-import { authenticationHeaders, handleErrors, handleResponse, type Page, type PageParams, requestUrl, zodPage } from '@/lib/request';
+import { authenticationHeaders, BASE_URL, buildUrlParams, handleErrors, handleResponse, type Page, type PageParams, zodPage } from '@/lib/request';
 import { zodJsonDate } from '@/lib/zod';
 import { z, type ZodType, type ZodTypeDef } from 'zod';
 
-export interface LLMSummary {
+export interface LLM {
   id: number;
   name: string;
   provider: string;
   model: string;
-  is_default: boolean;
-}
-
-export interface LLM extends LLMSummary {
   config?: any;
+  is_default: boolean;
   created_at: Date | null;
   updated_at: Date | null;
 }
@@ -31,22 +28,13 @@ export interface CreateLLM {
   credentials: string | object;
 }
 
-export interface UpdateLLM {
-  name?: string;
-  config?: any;
-  credentials?: string | object;
-}
-
-export const llmSummarySchema = z.object({
+const llmSchema = z.object({
   id: z.number(),
   name: z.string(),
   provider: z.string(),
   model: z.string(),
-  is_default: z.boolean(),
-}) satisfies ZodType<LLMSummary, ZodTypeDef, any>;
-
-const llmSchema = llmSummarySchema.extend({
   config: z.any(),
+  is_default: z.boolean(),
   created_at: zodJsonDate().nullable(),
   updated_at: zodJsonDate().nullable(),
 }) satisfies ZodType<LLM, ZodTypeDef, any>;
@@ -57,7 +45,7 @@ const llmOptionSchema = providerOptionSchema.and(z.object({
 })) satisfies ZodType<LlmOption, any, any>;
 
 export async function listLlmOptions () {
-  return await fetch(requestUrl(`/api/v1/admin/llms/providers/options`), {
+  return await fetch(`${BASE_URL}/api/v1/admin/llms/options`, {
     headers: {
       ...await authenticationHeaders(),
     },
@@ -66,20 +54,20 @@ export async function listLlmOptions () {
 }
 
 export async function listLlms ({ page = 1, size = 10 }: PageParams = {}): Promise<Page<LLM>> {
-  return await fetch(requestUrl('/api/v1/admin/llms', { page, size }), {
+  return await fetch(BASE_URL + '/api/v1/admin/llms' + '?' + buildUrlParams({ page, size }), {
     headers: await authenticationHeaders(),
   })
     .then(handleResponse(zodPage(llmSchema)));
 }
 
 export async function getLlm (id: number): Promise<LLM> {
-  return await fetch(requestUrl(`/api/v1/admin/llms/${id}`), {
+  return await fetch(BASE_URL + `/api/v1/admin/llms/${id}`, {
     headers: await authenticationHeaders(),
   }).then(handleResponse(llmSchema));
 }
 
 export async function createLlm (create: CreateLLM) {
-  return await fetch(requestUrl(`/api/v1/admin/llms`), {
+  return await fetch(BASE_URL + `/api/v1/admin/llms`, {
     method: 'POST',
     body: JSON.stringify(create),
     headers: {
@@ -89,26 +77,15 @@ export async function createLlm (create: CreateLLM) {
   }).then(handleResponse(llmSchema));
 }
 
-export async function updateLlm (id: number, update: UpdateLLM) {
-  return await fetch(requestUrl(`/api/v1/admin/llms/${id}`), {
-    method: 'PUT',
-    body: JSON.stringify(update),
-    headers: {
-      'Content-Type': 'application/json',
-      ...await authenticationHeaders(),
-    },
-  }).then(handleResponse(llmSchema));
-}
-
 export async function deleteLlm (id: number) {
-  await fetch(requestUrl(`/api/v1/admin/llms/${id}`), {
+  await fetch(BASE_URL + `/api/v1/admin/llms/${id}`, {
     method: 'DELETE',
     headers: await authenticationHeaders(),
   }).then(handleErrors);
 }
 
 export async function testLlm (createLLM: CreateLLM) {
-  return await fetch(requestUrl(`/api/v1/admin/llms/test`), {
+  return await fetch(`${BASE_URL}/api/v1/admin/llms/test`, {
     method: 'POST',
     body: JSON.stringify(createLLM),
     headers: {

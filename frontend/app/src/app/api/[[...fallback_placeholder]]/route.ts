@@ -35,7 +35,6 @@ function handler (request: NextRequest) {
     return response;
   }, error => {
     console.error('[proxy]', request.method, newUrl.toString(), error);
-    return Promise.reject(error);
   });
 }
 
@@ -51,7 +50,7 @@ function originalUrl (request: NextRequest) {
   }
 }
 
-export { handler as GET, handler as POST, handler as DELETE, handler as HEAD, handler as PUT, handler as PATCH, handler as OPTIONS };
+export { handler as GET, handler as POST, handler as DELETE, handler as HEAD, handler as PUT, handler as PATCH };
 
 export const runtime = 'edge';
 

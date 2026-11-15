@@ -41,11 +41,7 @@ export default function ChatEnginesPage () {
   const [recentlyCreated, setRecentlyCreated] = useState<CreateApiKeyResponse>();
   return (
     <>
-      <AdminPageHeading
-        breadcrumbs={[
-          { title: 'API Keys' },
-        ]}
-      />
+      <AdminPageHeading title="API Keys" />
       {recentlyCreated && (
         <Alert className="max-w-screen-sm" variant="success">
           <CircleCheckIcon />

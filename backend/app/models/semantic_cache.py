@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict
 from datetime import datetime
 
 from sqlmodel import (
@@ -12,24 +12,18 @@ from sqlmodel import (
 )
 from tidb_vector.sqlalchemy import VectorType
 
-from app.core.config import settings
-
 
 class SemanticCache(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     query: str = Field(sa_column=Column(Text))
     query_vec: Any = Field(
-        sa_column=Column(
-            VectorType(settings.EMBEDDING_DIMS), comment="hnsw(distance=cosine)"
-        )
+        sa_column=Column(VectorType(1536), comment="hnsw(distance=cosine)")
     )
     value: str = Field(sa_column=Column(Text))
     value_vec: Any = Field(
-        sa_column=Column(
-            VectorType(settings.EMBEDDING_DIMS), comment="hnsw(distance=cosine)"
-        )
+        sa_column=Column(VectorType(1536), comment="hnsw(distance=cosine)")
     )
-    meta: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    meta: List | Dict = Field(default={}, sa_column=Column(JSON))
     created_at: datetime = Field(
         sa_column=Column(DateTime, server_default=func.now(), nullable=True)
     )

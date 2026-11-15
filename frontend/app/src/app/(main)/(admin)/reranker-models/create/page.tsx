@@ -1,31 +1,24 @@
 'use client';
 
 import { AdminPageHeading } from '@/components/admin-page-heading';
+import { usePush } from '@/components/nextjs/app-router-hooks';
 import { CreateRerankerForm } from '@/components/reranker/CreateRerankerForm';
-import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
 
 export default function Page () {
-  const router = useRouter();
-  const [transitioning, startTransition] = useTransition();
+  const [navigating, push] = usePush();
 
   return (
     <>
       <AdminPageHeading
         breadcrumbs={[
-          { title: 'Models' },
-          { title: 'Reranker Models', url: '/reranker-models', docsUrl: 'https://autoflow.tidb.ai/reranker-model' },
+          { title: 'Reranker Models', url: '/reranker-models' },
           { title: 'Create' },
         ]}
       />
       <CreateRerankerForm
-        transitioning={transitioning}
+        transitioning={navigating}
         onCreated={reranker => {
-          startTransition(() => {
-            router.push(`/reranker-models/${reranker.id}`);
-            router.refresh();
-          });
-
+          push(`/reranker-models/${reranker.id}`);
         }}
       />
     </>

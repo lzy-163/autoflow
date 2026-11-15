@@ -5,11 +5,9 @@ import type { BootstrapStatus } from '@/api/system';
 import { getMe, type MeInfo } from '@/api/users';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { ChatsProvider } from '@/components/chat/chat-hooks';
-import { GtagProvider } from '@/components/gtag-provider';
 import { BootstrapStatusProvider } from '@/components/system/BootstrapStatusProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { SettingProvider } from '@/components/website-setting-provider';
-import { type ExperimentalFeatures, ExperimentalFeaturesProvider } from '@/experimental/experimental-features-provider';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from 'next-themes';
 import type { ReactNode } from 'react';
@@ -20,10 +18,9 @@ export interface RootProvidersProps {
   children: ReactNode;
   settings: PublicWebsiteSettings;
   bootstrapStatus: BootstrapStatus;
-  experimentalFeatures: Partial<ExperimentalFeatures>;
 }
 
-export function RootProviders ({ me, settings, bootstrapStatus, experimentalFeatures, children }: RootProvidersProps) {
+export function RootProviders ({ me, settings, bootstrapStatus, children }: RootProvidersProps) {
   const { data, isValidating, isLoading, mutate } = useSWR('api.users.me', getMe, {
     fallbackData: me,
     revalidateOnMount: false,
@@ -41,16 +38,12 @@ export function RootProviders ({ me, settings, bootstrapStatus, experimentalFeat
       >
         <SettingProvider
           value={settings}>
-          <ExperimentalFeaturesProvider features={experimentalFeatures}>
-            <GtagProvider gtagId={settings.ga_id} configured>
-              <AuthProvider me={data} isLoading={isLoading} isValidating={isValidating} reload={() => mutate(data, { revalidate: true })}>
-                <ChatsProvider>
-                  {children}
-                  <Toaster cn={cn} />
-                </ChatsProvider>
-              </AuthProvider>
-            </GtagProvider>
-          </ExperimentalFeaturesProvider>
+          <AuthProvider me={data} isLoading={isLoading} isValidating={isValidating} reload={() => mutate(data, { revalidate: true })}>
+            <ChatsProvider>
+              {children}
+              <Toaster cn={cn} />
+            </ChatsProvider>
+          </AuthProvider>
         </SettingProvider>
       </ThemeProvider>
     </BootstrapStatusProvider>

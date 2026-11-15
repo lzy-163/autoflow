@@ -4,6 +4,7 @@ import { ISecuritySettingResult } from '@/core/schema/settings/security';
 import { createContext } from 'react';
 
 export const SecuritySettingContext = createContext<ISecuritySettingResult>({});
+export const SecuritySettingProvider = SecuritySettingContext.Provider;
 
 declare var grecaptcha: any;
 

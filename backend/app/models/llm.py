@@ -1,13 +1,14 @@
 from typing import Optional, Any
-from sqlmodel import Field, Column, JSON, String
-from pydantic import BaseModel
-from app.rag.llms.provider import LLMProvider
+
+from sqlmodel import Field, Column, JSON
+
 from .base import UpdatableBaseModel, AESEncryptedColumn
+from app.types import LLMProvider
 
 
 class BaseLLM(UpdatableBaseModel):
     name: str = Field(max_length=64)
-    provider: LLMProvider = Field(sa_column=Column(String(32), nullable=False))
+    provider: LLMProvider
     model: str = Field(max_length=256)
     config: dict | list | None = Field(sa_column=Column(JSON), default={})
     is_default: bool = Field(default=False)
@@ -22,9 +23,3 @@ class LLM(BaseLLM, table=True):
 
 class AdminLLM(BaseLLM):
     id: int
-
-
-class LLMUpdate(BaseModel):
-    name: Optional[str] = None
-    config: Optional[dict] = None
-    credentials: Optional[str | dict] = None

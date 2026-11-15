@@ -7,7 +7,7 @@ import { ClipboardCheckIcon, ClipboardIcon } from 'lucide-react';
 import { useLayoutEffect, useState } from 'react';
 
 export interface CopyButtonProps extends Omit<ButtonProps, 'children' | 'type'> {
-  text: string | (() => string);
+  text: string;
   autoCopy?: boolean;
 }
 
@@ -17,7 +17,7 @@ export function CopyButton ({ text, className, onClick, autoCopy, ...props }: Co
   useLayoutEffect(() => {
     setCopied(false);
     if (autoCopy) {
-      setCopied(copy(typeof text === 'string' ? text : text()));
+      setCopied(copy(text));
     }
   }, [text]);
 
@@ -25,11 +25,11 @@ export function CopyButton ({ text, className, onClick, autoCopy, ...props }: Co
     <Button
       size="icon"
       variant="ghost"
-      className={cn('rounded-full w-7 h-7 transition-colors text-foreground', copied && 'text-success hover:text-success hover:bg-success/10')}
+      className={cn('rounded-full w-7 h-7 transition-colors text-foreground', copied && '!text-green-500 hover:bg-green-500/10')}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented) {
-          setCopied(copy(typeof text === 'string' ? text : text()));
+          setCopied(copy(text));
         }
       }}
       {...props}

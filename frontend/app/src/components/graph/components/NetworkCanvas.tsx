@@ -1,8 +1,6 @@
-import type { IdType, NetworkLink, NetworkNode, ReadonlyNetwork } from '../network/Network';
 import { useEffect, useRef, useState } from 'react';
-
-import { CanvasNetworkRenderer } from '../network/CanvasNetworkRenderer';
-import type { NetworkRendererOptions } from '../network/NetworkRendererOptions';
+import type { IdType, NetworkLink, NetworkNode, ReadonlyNetwork } from '../network/Network';
+import { NetworkRenderer, type NetworkRendererOptions } from '../network/NetworkRenderer';
 
 export interface NetworkCanvasProps<Node extends NetworkNode, Link extends NetworkLink> extends NetworkRendererOptions<Node, Link> {
   network: ReadonlyNetwork<Node, Link>;
@@ -12,24 +10,17 @@ export interface NetworkCanvasProps<Node extends NetworkNode, Link extends Netwo
 
 export function NetworkCanvas<Node extends NetworkNode, Link extends NetworkLink> ({ className, network, target, ...options }: NetworkCanvasProps<Node, Link>) {
   const ref = useRef<HTMLDivElement>(null);
-  const [renderer, setRenderer] = useState<CanvasNetworkRenderer<Node, Link>>();
+  const [renderer, setRenderer] = useState<NetworkRenderer<Node, Link>>();
 
   useEffect(() => {
-    // Cleanup previous renderer if it exists
-    if (renderer) {
-      renderer.unmount();
-    }
-
-    const newRenderer = new CanvasNetworkRenderer(network, options);
-    
+    const renderer = new NetworkRenderer(network, options);
     if (ref.current) {
-      newRenderer.mount(ref.current);
+      renderer.mount(ref.current);
     }
-    setRenderer(newRenderer);
+    setRenderer(renderer);
 
     return () => {
-      newRenderer.unmount();
-      setRenderer(undefined);
+      renderer.unmount();
     };
   }, [network]);
 
@@ -45,12 +36,12 @@ export function NetworkCanvas<Node extends NetworkNode, Link extends NetworkLink
     switch (target.type) {
       case 'node':
         renderer.focusNode(target.id);
-        break;
+        return () => renderer.blurNode();
       case 'link':
         renderer.focusLink(target.id);
-        break;
+        return () => renderer.blurLink();
     }
-  }, [target, renderer]);
+  }, [target]);
 
   return (
     <div className={className} ref={ref} />
