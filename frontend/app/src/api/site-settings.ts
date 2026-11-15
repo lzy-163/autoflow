@@ -1,4 +1,4 @@
-import { authenticationHeaders, handleErrors, handleResponse, requestUrl } from '@/lib/request';
+import { authenticationHeaders, BASE_URL, handleErrors, handleResponse } from '@/lib/request';
 import { z } from 'zod';
 
 interface SettingItemBase<K, T> {
@@ -42,9 +42,6 @@ export interface PublicWebsiteSettings {
   'custom_js_button_img_src': string;
   'custom_js_logo_src': string;
   'ga_id': string | null;
-  'max_upload_file_size': number | null;
-  'enable_post_verifications': boolean;
-  'enable_post_verifications_for_widgets': boolean;
 }
 
 const settingsItemSchema = z.object({
@@ -72,7 +69,7 @@ const settingsItemSchema = z.object({
   z.object({
     data_type: z.literal('bool'),
     value: z.boolean().nullable(),
-    default: z.coerce.boolean(),
+    default: z.boolean(),
   }),
   z.object({
     data_type: z.literal('list'),
@@ -89,7 +86,7 @@ const settingsItemSchema = z.object({
 export type AllSettings = Record<string, SettingItem>
 
 export async function getAllSiteSettings (): Promise<AllSettings> {
-  return await fetch(requestUrl(`/api/v1/admin/site-settings`),
+  return await fetch(`${BASE_URL}/api/v1/admin/site-settings`,
     {
       headers: await authenticationHeaders(),
     })
@@ -97,7 +94,7 @@ export async function getAllSiteSettings (): Promise<AllSettings> {
 }
 
 export async function updateSiteSetting (name: string, value: any) {
-  await fetch(requestUrl(`/api/v1/admin/site-settings/${name}`), {
+  await fetch(`${BASE_URL}/api/v1/admin/site-settings/${name}`, {
     method: 'PUT',
     headers: {
       ...await authenticationHeaders(),
@@ -108,8 +105,7 @@ export async function updateSiteSetting (name: string, value: any) {
 }
 
 export async function getPublicSiteSettings (): Promise<PublicWebsiteSettings> {
-  return fetch(requestUrl(`/api/v1/site-config`), {
+  return fetch(`${BASE_URL}/api/v1/site-config`, {
     headers: await authenticationHeaders(),
-    credentials: 'include',
   }).then(handleErrors).then(res => res.json());
 }

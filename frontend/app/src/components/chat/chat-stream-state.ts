@@ -8,13 +8,7 @@
  *     FINISHED = 9
  */
 import { Chat, ChatMessage, chatMessageSchema, ChatMessageSource, chatSchema } from '@/api/chats';
-import { StackVM } from '@/lib/stackvm';
 import { z, type ZodType } from 'zod';
-
-export const enum BaseState {
-  CONNECTING = 'CONNECTING', // only client side
-  UNKNOWN = 'UNKNOWN',
-}
 
 export const enum AppChatStreamState {
   CONNECTING = 'CONNECTING', // only client side
@@ -30,19 +24,9 @@ export const enum AppChatStreamState {
   UNKNOWN = 'UNKNOWN',
 }
 
-export type StackVMState = {
-  task_id: string;
-  branch: string;
-  state: StackVM.model.ParsedState;
-  seq_no: number;
-  toolCalls: StackVMToolCall[];
-};
-
-export type StackVMToolCall = { toolCallId: string, toolName: string, args: any, result?: any }
-
-export interface BaseAnnotation<S = AppChatStreamState> {
+export interface BaseAnnotation<S extends AppChatStreamState> {
   state: S;
-  display?: string;
+  display: string;
 }
 
 export interface TraceAnnotation extends BaseAnnotation<AppChatStreamState.TRACE> {
@@ -53,18 +37,10 @@ export interface SourceNodesAnnotation extends BaseAnnotation<AppChatStreamState
   context: ChatMessageSource[];
 }
 
-export interface RefineQuestionAnnotation extends BaseAnnotation<AppChatStreamState.REFINE_QUESTION> {
-  message?: string;
-}
-
 export type ChatMessageAnnotation =
-  BaseAnnotation<Exclude<AppChatStreamState, AppChatStreamState.TRACE | AppChatStreamState.SOURCE_NODES | AppChatStreamState.REFINE_QUESTION>>
+  BaseAnnotation<Exclude<AppChatStreamState, AppChatStreamState.TRACE | AppChatStreamState.SOURCE_NODES>>
   | TraceAnnotation
-  | SourceNodesAnnotation
-  | RefineQuestionAnnotation;
-
-export interface StackVMStateAnnotation extends BaseAnnotation<StackVMState> {
-}
+  | SourceNodesAnnotation;
 
 export type ChatInitialData = {
   chat: Chat;

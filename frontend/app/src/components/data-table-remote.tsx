@@ -7,20 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DataTableProvider } from '@/components/use-data-table';
-import { getErrorMessage } from '@/lib/errors';
 import type { Page, PageParams } from '@/lib/request';
-import { cn } from '@/lib/utils';
 import { ColumnDef, type ColumnFilter, flexRender, getCoreRowModel, getSortedRowModel, SortingState, Table as ReactTable, useReactTable } from '@tanstack/react-table';
-import type { CellContext, PaginationState, RowData } from '@tanstack/table-core';
+import type { PaginationState } from '@tanstack/table-core';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-
-declare module '@tanstack/table-core' {
-  interface ColumnMeta<TData extends RowData, TValue> {
-    colSpan?: number | ((context: CellContext<TData, TValue>) => number);
-  }
-}
 
 export interface PageApiOptions {
   globalFilter: string;
@@ -30,20 +22,14 @@ interface DataTableRemoteProps<TData, TValue> {
   idColumn: keyof TData;
   apiKey: string;
   api: (page: PageParams, options: PageApiOptions) => Promise<Page<TData>>;
-  apiDeps?: unknown[];
   columns: ColumnDef<TData, TValue>[];
   selectable?: boolean;
   batchOperations?: (rows: string[], revalidate: () => void) => ReactNode;
   refreshInterval?: number | ((data: Page<TData> | undefined) => number);
-  /**
-   * @deprecated
-   */
   before?: ReactNode;
-  /**
-   * @deprecated
-   */
   after?: ReactNode;
   toolbar?: (table: ReactTable<TData>) => ReactNode;
+  ts?: number;
   defaultSorting?: SortingState;
 }
 
@@ -52,7 +38,6 @@ export function DataTableRemote<TData, TValue> ({
   api,
   apiKey,
   columns,
-  apiDeps = [],
   selectable = false,
   batchOperations,
   refreshInterval,
@@ -74,7 +59,7 @@ export function DataTableRemote<TData, TValue> ({
   }, [rowSelection]);
 
   // Fetch data.
-  const { data, mutate, error, isLoading, isValidating } = useSWR(`${apiKey}?page=${pagination.pageIndex}&size=${pagination.pageSize}${globalFilter && `&query=${globalFilter}`}`, () => api({ page: pagination.pageIndex + 1, size: pagination.pageSize }, { globalFilter }), {
+  const { data, mutate, isLoading, isValidating } = useSWR(`${apiKey}?page=${pagination.pageIndex}&size=${pagination.pageSize}&query=${globalFilter}`, () => api({ page: pagination.pageIndex + 1, size: pagination.pageSize }, { globalFilter }), {
     refreshInterval,
     revalidateOnReconnect: false,
     revalidateOnFocus: false,
@@ -85,7 +70,7 @@ export function DataTableRemote<TData, TValue> ({
 
   useEffect(() => {
     void mutate();
-  }, [pagination.pageSize, pagination.pageIndex, globalFilter, ...apiDeps]);
+  }, [pagination.pageSize, pagination.pageIndex, globalFilter]);
 
   // Column definitions.
   columns = useMemo(() => {
@@ -149,13 +134,7 @@ export function DataTableRemote<TData, TValue> ({
   });
 
   return (
-    <DataTableProvider
-      value={{
-        ...table,
-        reload: () => { mutate(); },
-        loading: isLoading,
-      }}
-    >
+    <DataTableProvider value={{ ...table, reload: () => { mutate(); } }}>
       {before}
       {toolbar ? toolbar(table) : null}
       <TooltipProvider>
@@ -186,28 +165,17 @@ export function DataTableRemote<TData, TValue> ({
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
                   >
-                    {row.getVisibleCells().map((cell) => {
-                      // Col span for advanced customization.
-                      const span = getColSpan(cell.column.columnDef, cell.getContext());
-
-                      if (span === 0) {
-                        return <Fragment key={cell.id} />;
-                      }
-
-                      return (
-                        <TableCell key={cell.id} colSpan={span}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      );
-                    })}
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className={cn('h-24 text-center', !!error && 'text-destructive')}>
-                    {error
-                      ? `Failed to load data: ${getErrorMessage(error)}`
-                      : 'Empty List'}
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results.
                   </TableCell>
                 </TableRow>
               )}
@@ -325,15 +293,4 @@ function steps (from: number, to: number) {
   }
 
   return arr;
-}
-
-function getColSpan<TData extends RowData, TValue> (columnDef: ColumnDef<TData, TValue>, context: CellContext<TData, TValue>) {
-  const colSpan = columnDef.meta?.colSpan;
-  if (colSpan == null) {
-    return undefined;
-  }
-  if (typeof colSpan === 'number') {
-    return colSpan;
-  }
-  return colSpan(context);
 }

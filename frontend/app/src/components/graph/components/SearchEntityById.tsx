@@ -12,14 +12,10 @@ import { useForm } from 'react-hook-form';
 import z from 'zod';
 
 export interface SearchEntityProps extends UseEntitiesRequired {
-  knowledgeBaseId: number
 }
 
-/**
- * @deprecated
- */
-export function SearchEntityById ({ knowledgeBaseId, ...props }: SearchEntityProps) {
-  const { table, ids, setIds } = useGraphEntitiesByIdsTable(knowledgeBaseId, {
+export function SearchEntityById ({ ...props }: SearchEntityProps) {
+  const { table, ids, setIds } = useGraphEntitiesByIdsTable({
     columns: entityColumns,
     ...props,
   });

@@ -1,16 +1,14 @@
 import { chat, type Chat, type ChatMessage, type PostChatParams } from '@/api/chats';
-import { BaseChatMessageController, ChatMessageController, LegacyChatMessageController, type OngoingState, StackVMChatMessageController } from '@/components/chat/chat-message-controller';
-import { AppChatStreamState, type BaseAnnotation, chatDataPartSchema, fixChatInitialData, type StackVMState } from '@/components/chat/chat-stream-state';
-import type { GtagFn } from '@/components/gtag-provider';
+import { ChatMessageController, type OngoingState } from '@/components/chat/chat-message-controller';
+import { AppChatStreamState, chatDataPartSchema, type ChatMessageAnnotation, fixChatInitialData } from '@/components/chat/chat-stream-state';
 import { getErrorMessage } from '@/lib/errors';
-import { trigger } from '@/lib/react';
 import { type JSONValue, type StreamPart } from 'ai';
 import EventEmitter from 'eventemitter3';
 
-export interface ChatControllerEventsMap<State = AppChatStreamState, Annotation extends BaseAnnotation<State> = BaseAnnotation<State>> {
+export interface ChatControllerEventsMap {
   'created': [Chat];
   'updated': [Chat];
-  'message-loaded': [messageController: BaseChatMessageController<State, Annotation>];
+  'message-loaded': [messageController: ChatMessageController];
 
   /**
    * Emit instantly when {@link ChatController#post} is called
@@ -23,24 +21,16 @@ export interface ChatControllerEventsMap<State = AppChatStreamState, Annotation 
   'post-initialized': [];
   'post-finished': [];
   'post-error': [error: unknown];
-
-  /**
-   * Experimental
-   */
-  'ui:input-mount': [HTMLTextAreaElement | HTMLInputElement];
-  'ui:input-unmount': [HTMLTextAreaElement | HTMLInputElement];
 }
 
-export class ChatController<State extends AppChatStreamState = AppChatStreamState, Annotation extends BaseAnnotation<State> = BaseAnnotation<State>> extends EventEmitter<ChatControllerEventsMap<State, Annotation>> {
+export class ChatController extends EventEmitter<ChatControllerEventsMap> {
   public chat: Chat | undefined;
 
-  private _messages: Map<number, ChatMessageController | StackVMChatMessageController> = new Map();
+  private _messages: Map<number, ChatMessageController> = new Map();
 
   private _postParams: Omit<PostChatParams, 'chat_id'> | undefined = undefined;
   private _postError: unknown = undefined;
   private _postInitialized: boolean = false;
-
-  private _inputElement: HTMLTextAreaElement | HTMLInputElement | null = null;
 
   get postState () {
     return {
@@ -50,13 +40,7 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
     };
   }
 
-  constructor (
-    chat: Chat | undefined = undefined,
-    messages: ChatMessage[] | undefined = [],
-    initialPost: Omit<PostChatParams, 'chat_id'> | undefined = undefined,
-    inputElement: HTMLInputElement | HTMLTextAreaElement | null = null,
-    private readonly _gtagFn: GtagFn = () => {},
-  ) {
+  constructor (chat: Chat | undefined = undefined, messages: ChatMessage[] | undefined = [], initialPost: Omit<PostChatParams, 'chat_id'> | undefined = undefined) {
     super();
     if (chat) {
       this.chat = chat;
@@ -67,80 +51,9 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
     if (initialPost) {
       this.post(initialPost);
     }
-    this._inputElement = inputElement;
-    if (inputElement) {
-      this.emit('ui:input-mount', inputElement);
-    }
   }
 
-  get inputElement () {
-    return this._inputElement;
-  }
-
-  set inputElement (value: HTMLInputElement | HTMLTextAreaElement | null) {
-    if (this._inputElement) {
-      if (value) {
-        if (value !== this._inputElement) {
-          const old = this._inputElement;
-          this._inputElement = null;
-          this.emit('ui:input-unmount', old);
-
-          this._inputElement = value;
-          this.emit('ui:input-mount', value);
-        }
-      } else {
-        const old = this._inputElement;
-        this._inputElement = null;
-        this.emit('ui:input-unmount', old);
-      }
-    } else {
-      if (value) {
-        this._inputElement = value;
-        this.emit('ui:input-mount', value);
-      }
-    }
-  }
-
-  private get _enabledInputElement () {
-    if (!this._inputElement) {
-      console.warn('Input element is not exists.');
-      return;
-    }
-    if (this._inputElement.disabled) {
-      console.warn('Input element is disabled currently.');
-      return;
-    }
-
-    return this._inputElement;
-  }
-
-  get inputEnabled () {
-    if (!this._inputElement) {
-      return false;
-    }
-
-    return !this._inputElement.disabled;
-  }
-
-  get input (): string {
-    return this._inputElement?.value ?? '';
-  }
-
-  set input (value: string) {
-    const inputElement = this._enabledInputElement;
-    if (inputElement) {
-      trigger(inputElement as HTMLTextAreaElement, HTMLTextAreaElement, value);
-    }
-  }
-
-  focusInput () {
-    const inputElement = this._enabledInputElement;
-    if (inputElement) {
-      inputElement.focus();
-    }
-  }
-
-  get messages (): (ChatMessageController | StackVMChatMessageController)[] {
+  get messages (): ChatMessageController[] {
     return Array.from(this._messages.values()).sort((a, b) => a.message.ordinal - b.message.ordinal);
   }
 
@@ -149,21 +62,13 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
       throw new Error('previous not finished.');
     }
 
-    if (!params.content.trim()) {
-      throw new Error('Empty message');
-    }
-
-    this._gtagFn('event', 'tidbai.events.message-start', {
-      'tidbai_appending_message': !!this.chat?.id,
-    });
-
     // Initialize post states
     this._postParams = params;
     this._postError = undefined;
     this._postInitialized = false;
     this.emit('post', params);
 
-    let ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined = undefined;
+    let ongoingMessageController: ChatMessageController | undefined = undefined;
 
     try {
       const streamParts = chat({
@@ -186,14 +91,10 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
       this._postParams = undefined;
       this._postInitialized = false;
       this.emit('post-finished');
-
-      this._gtagFn('event', 'tidbai.events.message-finish', {});
     } catch (error) {
       ongoingMessageController?.applyError(getErrorMessage(error));
       this._postError = error;
       this.emit('post-error', error);
-
-      this._gtagFn('event', 'tidbai.events.message-error', {});
     }
   }
 
@@ -206,14 +107,6 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
     const newCreated = !this.chat;
     this.chat = { ...this.chat, ...chat };
     this.emit(newCreated ? 'created' : 'updated', this.chat);
-
-    if (process.env.NEXT_PUBLIC_IS_WIDGET) {
-      if (newCreated) {
-        window.dispatchEvent(new CustomEvent('tidbainewchat', {
-          detail: { id: chat.id },
-        }));
-      }
-    }
   }
 
   upsertMessage (message: ChatMessage): void {
@@ -226,7 +119,7 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
     }
   }
 
-  _processPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, any, any>['parse']>) {
+  _processPart (ongoingMessageController: ChatMessageController | undefined, part: ReturnType<StreamPart<any, any, any>['parse']>) {
     switch (part.type) {
       case 'data':
         // Data part contains chat and chat_message info from server. will be sent twice (beginning and finished).
@@ -243,29 +136,22 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
       case 'error':
         this._processErrorPart(ongoingMessageController, part);
         break;
-      case 'tool_call':
-        this._processToolCallPart(ongoingMessageController, part);
-        break;
-      case 'tool_result':
-        this._processToolResultPart(ongoingMessageController, part);
-        break;
-      case 'finish_step':
-
-      case 'finish_message':
-        // TODO
-        break;
       default:
         console.warn('unsupported stream part', part);
     }
     return ongoingMessageController;
   }
 
-  private _processDataPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, 'data', JSONValue[]>['parse']>): ChatMessageController | StackVMChatMessageController {
+  private _processDataPart (ongoingMessageController: ChatMessageController | undefined, part: ReturnType<StreamPart<any, 'data', JSONValue[]>['parse']>): ChatMessageController {
     const { chat, user_message, assistant_message } = chatDataPartSchema.parse(fixChatInitialData(part.value[0]));
     this.updateChat(chat);
     this.upsertMessage(user_message);
     if (!ongoingMessageController) {
-      ongoingMessageController = this.createMessage(assistant_message, true);
+      ongoingMessageController = this.createMessage(assistant_message, {
+        state: AppChatStreamState.CONNECTING,
+        display: 'Connecting to server...',
+        finished: false,
+      });
       this._postInitialized = true;
       this.emit('post-initialized');
     } else {
@@ -275,57 +161,28 @@ export class ChatController<State extends AppChatStreamState = AppChatStreamStat
     return ongoingMessageController;
   }
 
-  private _processMessageAnnotationPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, 'message_annotations', JSONValue[]>['parse']>) {
+  private _processMessageAnnotationPart (ongoingMessageController: ChatMessageController | undefined, part: ReturnType<StreamPart<any, 'message_annotations', JSONValue[]>['parse']>) {
     assertNonNull(ongoingMessageController, 'Cannot handle chat stream part: no ongoingMessageController', part);
-    const annotation = ongoingMessageController.parseAnnotation(part.value[0]);
-    ongoingMessageController.applyStreamAnnotation(annotation as never);
+    const annotation: ChatMessageAnnotation = part.value[0] as any;
+    ongoingMessageController.applyStreamAnnotation(annotation);
   }
 
-  private _processTextPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, 'text', string>['parse']>) {
+  private _processTextPart (ongoingMessageController: ChatMessageController | undefined, part: ReturnType<StreamPart<any, 'text', string>['parse']>) {
     if (part.value) { // ignore leading empty chunks.
       assertNonNull(ongoingMessageController, 'Cannot handle chat stream part: no ongoingMessageController', part);
       ongoingMessageController.applyDelta(part.value);
     }
   }
 
-  private _processErrorPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, 'error', string>['parse']>) {
+  private _processErrorPart (ongoingMessageController: ChatMessageController | undefined, part: ReturnType<StreamPart<any, 'error', string>['parse']>) {
     assertNonNull(ongoingMessageController, 'Cannot handle chat stream part: no ongoingMessageController', part);
     ongoingMessageController.applyError(part.value);
   }
 
-  private _processToolCallPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, 'tool_call', { toolCallId: string, toolName: string, args: any }>['parse']>) {
-    assertNonNull(ongoingMessageController, 'Cannot handle chat stream part: no ongoingMessageController', part);
-    ongoingMessageController.applyToolCall(part.value);
-  }
-
-  private _processToolResultPart (ongoingMessageController: ChatMessageController | StackVMChatMessageController | undefined, part: ReturnType<StreamPart<any, 'tool_call', { toolCallId: string, result: any }>['parse']>) {
-    assertNonNull(ongoingMessageController, 'Cannot handle chat stream part: no ongoingMessageController', part);
-    ongoingMessageController.applyToolResult(part.value);
-  }
-
-  private createMessage (message: ChatMessage, initialOngoingState?: true) {
-    if (!this.chat?.engine_options) {
-      throw new Error('Unable to decide which chat engine used.');
-    }
-
-    if (this.chat.engine_options.external_engine_config?.stream_chat_api_url) {
-      return this.createStackVMMessage(message, initialOngoingState);
-    } else {
-      return this.createLegacyMessage(message, initialOngoingState);
-    }
-  }
-
-  private createLegacyMessage (message: ChatMessage, initialOngoingState?: true | OngoingState) {
-    const controller = new LegacyChatMessageController(message, initialOngoingState);
+  private createMessage (message: ChatMessage, initialOngoingState?: OngoingState) {
+    const controller = new ChatMessageController(message, initialOngoingState);
     this._messages.set(message.id, controller);
-    this.emit('message-loaded', controller as any);
-    return controller;
-  }
-
-  private createStackVMMessage (message: ChatMessage, initialOngoingState?: true | OngoingState<StackVMState>) {
-    const controller = new StackVMChatMessageController(message, initialOngoingState);
-    this._messages.set(message.id, controller);
-    this.emit('message-loaded', controller as any);
+    this.emit('message-loaded', controller);
     return controller;
   }
 }

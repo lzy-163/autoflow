@@ -7,11 +7,7 @@ export default async function ConversationsListPage () {
 
   return (
     <>
-      <AdminPageHeading
-        breadcrumbs={[
-          { title: 'Conversations History' },
-        ]}
-      />
+      <AdminPageHeading title="Conversations history" />
       <ChatsTable />
     </>
   );

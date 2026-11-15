@@ -1,4 +1,5 @@
 import { type SettingItem, updateSiteSetting } from '@/api/site-settings';
+import { useRefresh } from '@/components/nextjs/app-router-hooks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -10,8 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { capitalCase } from 'change-case-all';
 import { deepEqual } from 'fast-equals';
 import { CheckIcon, Loader2Icon, TriangleAlertIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { cloneElement, type ReactElement, type ReactNode, useCallback, useDeferredValue, useMemo, useTransition } from 'react';
+import { cloneElement, type ReactElement, type ReactNode, useCallback, useDeferredValue, useMemo } from 'react';
 import { type ControllerRenderProps, useForm, useFormState, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z, type ZodType } from 'zod';
@@ -23,15 +23,11 @@ export interface SettingsFieldProps {
   objectSchema?: ZodType;
   onChanged?: () => void;
   disabled?: boolean;
-  children?: (props: ControllerRenderProps) => ReactElement<any>;
+  children?: (props: ControllerRenderProps) => ReactElement;
 }
 
-/**
- * @deprecated
- */
 export function SettingsField ({ name, item, arrayItemSchema, objectSchema, onChanged, disabled, children }: SettingsFieldProps) {
-  const router = useRouter();
-  const [transitioning, startTransition] = useTransition();
+  const [refreshing, refresh] = useRefresh();
 
   if (!item) {
     return (
@@ -92,7 +88,7 @@ export function SettingsField ({ name, item, arrayItemSchema, objectSchema, onCh
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const form = useForm({
     resolver: zodResolver(schema),
-    disabled: disabled || transitioning,
+    disabled: disabled || refreshing,
     values: {
       [item.name]: item.value,
     },
@@ -119,7 +115,7 @@ export function SettingsField ({ name, item, arrayItemSchema, objectSchema, onCh
           el = <Input {...props} placeholder={item.default} />;
           break;
         case 'bool':
-          el = <Switch className="block" {...props} onChange={undefined} checked={props.value} onCheckedChange={props.onChange} />;
+          el = <Switch {...props} onChange={undefined} checked={props.value} onCheckedChange={props.onChange} />;
           break;
         case 'dict':
         case 'list':
@@ -138,9 +134,7 @@ export function SettingsField ({ name, item, arrayItemSchema, objectSchema, onCh
     try {
       await updateSiteSetting(name, data[item.name]);
       form.reset({ [item.name]: data[item.name] });
-      startTransition(() => {
-        router.refresh();
-      });
+      refresh();
       onChanged?.();
       toast.success(`Changes successfully saved.`);
     } catch (e) {
@@ -172,7 +166,7 @@ export function SettingsField ({ name, item, arrayItemSchema, objectSchema, onCh
             </FormItem>
           )}
         />
-        <Operations name={item.name} defaultValue={item.default} refreshing={transitioning} />
+        <Operations name={item.name} defaultValue={item.default} refreshing={refreshing} />
       </form>
     </Form>
   );
@@ -192,7 +186,7 @@ function Operations ({ refreshing, name, defaultValue }: { refreshing: boolean, 
 
   return (
     <div className="flex gap-2 items-center">
-      {(isDirty || deferredIsDirty) && <Button className={cn('gap-2 items-center', successAndWaitRefreshing && 'bg-success')} type="submit" disabled={isSubmitting || successAndWaitRefreshing || disabled}>
+      {(isDirty || deferredIsDirty) && <Button className={cn('gap-2 items-center', successAndWaitRefreshing && 'bg-green-500')} type="submit" disabled={isSubmitting || successAndWaitRefreshing || disabled}>
         {(isSubmitting) && <Loader2Icon className="size-4 animate-spin repeat-infinite" />}
         {successAndWaitRefreshing && <CheckIcon className="size-4" />}
         {isSubmitting ? 'Saving...' : refreshing ? 'Saved' : 'Save'}

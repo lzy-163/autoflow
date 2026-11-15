@@ -1,6 +1,11 @@
-import { createApiKey, type CreateApiKeyResponse } from '@/api/api-keys';
+import { createApiKey, type CreateApiKey, type CreateApiKeyResponse } from '@/api/api-keys';
 import { FormInput } from '@/components/form/control-widget';
-import { withCreateEntityForm } from '@/components/form/create-entity-form';
+import { FormFieldBasicLayout } from '@/components/form/field-layout';
+import { FormSubmit } from '@/components/form/submit';
+import { handleSubmitHelper } from '@/components/form/utils';
+import { Form } from '@/components/ui/form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -11,17 +16,30 @@ export interface CreateApiKeyFormProps {
   onCreated?: (data: CreateApiKeyResponse) => void;
 }
 
-const FormImpl = withCreateEntityForm(schema, createApiKey, {
-  submitTitle: 'Create API Key',
-  submittingTitle: 'Creating API Key...',
-});
-
 export function CreateApiKeyForm ({ onCreated }: CreateApiKeyFormProps) {
+  const form = useForm<CreateApiKey>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      description: '',
+    },
+  });
+
   return (
-    <FormImpl onCreated={onCreated}>
-      <FormImpl.Basic name="description" label="API Key Description">
-        <FormInput />
-      </FormImpl.Basic>
-    </FormImpl>
+    <Form {...form}>
+      <form
+        className="space-y-4"
+        onSubmit={handleSubmitHelper(form, async data => {
+          const response = await createApiKey(data);
+          onCreated?.(response);
+        })}
+      >
+        <FormFieldBasicLayout name="description" label="API Key Descrtipion">
+          <FormInput />
+        </FormFieldBasicLayout>
+        <FormSubmit submittingText="Creating API Key...">
+          Create API Key
+        </FormSubmit>
+      </form>
+    </Form>
   );
 }

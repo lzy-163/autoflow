@@ -4,45 +4,29 @@ import { type ChatEngine, createChatEngine, deleteChatEngine, listChatEngines } 
 import { actions } from '@/components/cells/actions';
 import { boolean } from '@/components/cells/boolean';
 import { datetime } from '@/components/cells/datetime';
+import { link } from '@/components/cells/link';
 import { mono } from '@/components/cells/mono';
+import { DangerousActionButton } from '@/components/dangerous-action-button';
 import { DataTableRemote } from '@/components/data-table-remote';
-import { useBootstrapStatus } from '@/components/system/BootstrapStatusProvider';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePush } from '@/components/nextjs/app-router-hooks';
+import { Button } from '@/components/ui/button';
+import { useDataTable } from '@/components/use-data-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { createColumnHelper } from '@tanstack/table-core';
-import { AlertTriangleIcon, CopyIcon, TrashIcon } from 'lucide-react';
-import Link from 'next/link';
+import { CopyIcon, TrashIcon } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const helper = createColumnHelper<ChatEngine>();
 
 const columns = [
-  helper.accessor('id', { 
-    header: 'ID',
-    cell: mono 
-  }),
-  helper.accessor('name', { 
-    header: 'NAME',
-    cell: context => <NameLink chatEngine={context.row.original} /> 
-  }),
-  helper.accessor('created_at', { 
-    header: 'CREATED AT',
-    cell: datetime 
-  }),
-  helper.accessor('updated_at', { 
-    header: 'UPDATED AT',
-    cell: datetime 
-  }),
-  helper.accessor('is_default', { 
-    header: 'IS DEFAULT',
-    cell: boolean 
-  }),
-  helper.accessor('is_public', { 
-    header: 'IS PUBLIC',
-    cell: boolean 
-  }),
+  helper.accessor('id', { cell: mono }),
+  helper.accessor('name', { cell: link({ url: row => `/chat-engines/${row.id}` }) }),
+  helper.accessor('created_at', { cell: datetime }),
+  helper.accessor('updated_at', { cell: datetime }),
+  helper.accessor('is_default', { cell: boolean }),
   helper.display({
-    header: 'ACTIONS',
+    header: 'Actions',
     cell: actions((chatEngine) => [
       {
         key: 'clone',
@@ -52,7 +36,7 @@ const columns = [
             name: `${name} Copy`, llm_id, fast_llm_id, engine_options,
           })
             .then(newEngine => {
-              toast.success('Chat Engine successfully cloned.');
+              toast('Chat Engine successfully cloned.');
               startTransition(() => {
                 router.push(`/chat-engines/${newEngine.id}`);
               });
@@ -87,27 +71,60 @@ export function ChatEnginesTable () {
   );
 }
 
-function NameLink ({ chatEngine }: { chatEngine: ChatEngine }) {
-  const { need_migration } = useBootstrapStatus();
+function ChatEngineActions ({ chatEngine }: { chatEngine: ChatEngine }) {
+  return (
+    <span className="flex gap-2 items-center">
+      <CloneButton chatEngine={chatEngine} />
+      <DeleteButton chatEngine={chatEngine} />
+    </span>
+  );
+}
 
-  const kbNotConfigured = !!need_migration.chat_engines_without_kb_configured?.includes(chatEngine.id);
+function CloneButton ({ chatEngine }: { chatEngine: ChatEngine }) {
+  const [cloning, setCloning] = useState(false);
+  const [navigating, push] = usePush();
 
   return (
-    <Link
-      className="underline font-mono"
-      href={`/chat-engines/${chatEngine.id}`}
+    <Button
+      variant="ghost"
+      className="text-xs"
+      disabled={cloning || navigating}
+      size="sm"
+      onClick={() => {
+        setCloning(true);
+        const { name, llm_id, fast_llm_id, engine_options } = chatEngine;
+        createChatEngine({
+          name: `${name} Copy`, llm_id, fast_llm_id, engine_options,
+        })
+          .then(newEngine => {
+            toast('Chat Engine successfully cloned.');
+            push(`/chat-engines/${newEngine.id}`);
+          })
+          .finally(() => {
+            setCloning(false);
+          });
+      }}
     >
-      {kbNotConfigured && <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <AlertTriangleIcon className="text-warning inline-flex mr-1 size-3" />
-          </TooltipTrigger>
-          <TooltipContent className="text-xs" align="start">
-            Knowledge Base not configured.
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>}
-      {chatEngine.name}
-    </Link>
+      <CopyIcon className="w-3 mr-1" />
+      Clone
+    </Button>
+  );
+}
+
+function DeleteButton ({ chatEngine }: { chatEngine: ChatEngine }) {
+  const { reload } = useDataTable();
+
+  return (
+    <DangerousActionButton
+      action={async () => {
+        await deleteChatEngine(chatEngine.id);
+        reload?.();
+      }}
+      variant="ghost"
+      className="text-xs text-destructive hover:text-destructive hover:bg-destructive/20"
+    >
+      <TrashIcon className="w-3 mr-1" />
+      Delete
+    </DangerousActionButton>
   );
 }

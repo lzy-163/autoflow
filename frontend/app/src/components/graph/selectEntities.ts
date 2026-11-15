@@ -53,10 +53,10 @@ export function useEntities () {
   };
 }
 
-export function useGraphEntitiesTable (kbId: number, { rowSelection, setRowSelection, entityMap, columns }: { rowSelection: RowSelectionState, setRowSelection: Dispatch<SetStateAction<RowSelectionState>>, entityMap: MutableRefObject<Map<string, RemoteEntity>>, columns: ColumnDef<RemoteEntity, any>[] }) {
+export function useGraphEntitiesTable ({ rowSelection, setRowSelection, entityMap, columns }: { rowSelection: RowSelectionState, setRowSelection: Dispatch<SetStateAction<RowSelectionState>>, entityMap: MutableRefObject<Map<string, RemoteEntity>>, columns: ColumnDef<RemoteEntity, any>[] }) {
   const [filter, setFilter] = useState<SearchEntityFilter>(() => ({ query: '', top_k: undefined }));
 
-  const { data, isLoading, error } = useSWR(shouldFetch(filter) && `api.knowledge-bases.${kbId}.graph.search-entity?query=${filter.query}&top_k=${filter.top_k}`, () => searchEntity(kbId, filter.query, filter.top_k), {
+  const { data, isLoading, error } = useSWR(shouldFetch(filter) && `api.graph.search-entity?query=${filter.query}&top_k=${filter.top_k}`, () => searchEntity(filter.query, filter.top_k), {
     revalidateOnFocus: false,
   });
 
@@ -94,7 +94,7 @@ export function useGraphEntitiesTable (kbId: number, { rowSelection, setRowSelec
   };
 }
 
-export function useGraphEntitiesByIdsTable (kbId: number, { rowSelection, setRowSelection, entityMap, columns }: { rowSelection: RowSelectionState, setRowSelection: Dispatch<SetStateAction<RowSelectionState>>, entityMap: MutableRefObject<Map<string, RemoteEntity>>, columns: ColumnDef<RemoteEntity, any>[] }) {
+export function useGraphEntitiesByIdsTable ({ rowSelection, setRowSelection, entityMap, columns }: { rowSelection: RowSelectionState, setRowSelection: Dispatch<SetStateAction<RowSelectionState>>, entityMap: MutableRefObject<Map<string, RemoteEntity>>, columns: ColumnDef<RemoteEntity, any>[] }) {
   const [ids, setIds] = useState<number[]>([]);
   const [data, setData] = useState<RemoteEntity[]>([]);
   const promisesRef = useRef<Record<string, Promise<void>>>({});
@@ -110,7 +110,7 @@ export function useGraphEntitiesByIdsTable (kbId: number, { rowSelection, setRow
       let entity = entityMap.current.get(String(id));
       if (!entity) {
         if (!promisesRef.current[String(id)]) {
-          promisesRef.current[String(id)] = getEntity(kbId, id)
+          promisesRef.current[String(id)] = getEntity(id)
             .then(
               entity => {
                 entityMap.current.set(String(entity.id), entity);
@@ -133,7 +133,7 @@ export function useGraphEntitiesByIdsTable (kbId: number, { rowSelection, setRow
       }
     }
     updateData();
-  }, [kbId, ids]);
+  }, [ids]);
 
   const updateData = () => {
     setData(idsRef.current.map(id => {

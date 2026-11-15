@@ -1,21 +1,23 @@
 'use client';
 
-import { type CreateLLM, createLlm, type LLM, testLlm } from '@/api/llms';
+import { createLlm, listLlmOptions, type LLM, testLlm } from '@/api/llms';
 import { ProviderSelect } from '@/components/form/biz';
-import { FormInput } from '@/components/form/control-widget';
-import { formFieldLayout } from '@/components/form/field-layout';
+import { FormInput, FormSwitch } from '@/components/form/control-widget';
+import { FormFieldBasicLayout, FormFieldContainedLayout } from '@/components/form/field-layout';
 import { FormRootError } from '@/components/form/root-error';
-import { onSubmitHelper } from '@/components/form/utils';
 import { CodeInput } from '@/components/form/widgets/CodeInput';
-import { useLLMProviders } from '@/components/llm/hooks';
 import { ProviderDescription } from '@/components/provider-description';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Form, formDomEventHandlers, FormSubmit } from '@/components/ui/form.beta';
-import { useModelProvider } from '@/hooks/use-model-provider';
+import { Button } from '@/components/ui/button';
+import { Form } from '@/components/ui/form';
+import { getErrorMessage } from '@/lib/errors';
 import { zodJsonText } from '@/lib/zod';
-import { useForm } from '@tanstack/react-form';
-import { useId, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2Icon } from 'lucide-react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import useSWR from 'swr';
 import { z } from 'zod';
 
 const unsetForm = z.object({
@@ -35,88 +37,114 @@ const dictCredentialForm = unsetForm.extend({
   credentials: zodJsonText(),
 });
 
-const field = formFieldLayout<CreateLLM>();
-
 export function CreateLLMForm ({ transitioning, onCreated }: { transitioning?: boolean, onCreated?: (llm: LLM) => void }) {
-  const id = useId();
-  const { data: options, isLoading, error } = useLLMProviders();
-  const [submissionError, setSubmissionError] = useState<unknown>();
+  const { data: options, isLoading, error } = useSWR('api.llms.list-options', listLlmOptions);
 
-  const form = useForm<CreateLLM | Omit<CreateLLM, 'model' | 'credentials'>>({
-    validators: {
-      onSubmit: unsetForm,
-    },
-    onSubmit (props) {
-      const { value } = props;
-      const provider = options?.find(option => option.provider === value.provider);
+  const form = useForm<any>({
+    resolver: (values, context, opts) => {
+      const provider = options?.find(option => option.provider === values.provider);
 
-      const schema = provider
-        ? provider.credentials_type === 'str'
-          ? strCredentialForm
-          : provider.credentials_type === 'dict'
-            ? dictCredentialForm
-            : unsetForm
-        : unsetForm;
-
-      return onSubmitHelper(schema, async (values) => {
-        const { error, success } = await testLlm(values as CreateLLM);
-        if (!success) {
-          throw new Error(error || 'Test LLM failed');
-        }
-        const llm = await createLlm(values as CreateLLM);
-        toast.success(`LLM ${llm.name} successfully created.`);
-        onCreated?.(llm);
-      }, setSubmissionError)(props);
+      return zodResolver(
+        provider
+          ? provider.credentials_type === 'str'
+            ? strCredentialForm
+            : provider.credentials_type === 'dict'
+              ? dictCredentialForm
+              : unsetForm
+          : unsetForm)(values, context, opts);
     },
     defaultValues: {
       name: '',
       provider: '',
+      model: '',
+      credentials: '',
       is_default: false,
       config: '{}',
     },
   });
 
-  const provider = useModelProvider(form, options, 'default_llm_model');
+  const providerName = form.watch('provider');
+  const provider = options?.find(option => option.provider === providerName);
+
+  useEffect(() => {
+    if (provider) {
+      form.reset({
+        ...form.getValues(),
+        model: provider.default_llm_model,
+        credentials: provider.credentials_type === 'dict' ? undefined : '',
+        config: '{}',
+      });
+    } else {
+      const { name, is_default } = form.getValues();
+      form.reset({
+        name,
+        is_default,
+        provider: '',
+        credentials: '',
+        model: '',
+        config: '{}',
+      });
+    }
+  }, [provider]);
+
+  const handleSubmit = form.handleSubmit(async (values) => {
+    const { error, success } = await testLlm(values);
+    if (!success) {
+      form.setError('root', { message: error || 'Unknown error' });
+      return;
+    }
+    try {
+      const llm = await createLlm(values);
+      toast('LLM successfully created.');
+      onCreated?.(llm);
+    } catch (error) {
+      form.setError('root', { message: getErrorMessage(error) });
+    }
+  });
 
   return (
     <>
-      <Form form={form} disabled={transitioning} submissionError={submissionError}>
-        <form id={id} className="space-y-4 max-w-screen-sm" {...formDomEventHandlers(form, transitioning)}>
-          <field.Basic name="name" label="Name">
+      <Form {...form}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <FormFieldBasicLayout name="name" label="Name">
             <FormInput />
-          </field.Basic>
-          <field.Basic name="provider" label="Provider" description={provider && <ProviderDescription provider={provider} />}>
+          </FormFieldBasicLayout>
+          <FormFieldBasicLayout name="provider" label="Provider" description={provider && <ProviderDescription provider={provider} />}>
             <ProviderSelect options={options} isLoading={isLoading} error={error} />
-          </field.Basic>
+          </FormFieldBasicLayout>
           {provider && (
             <>
-              <field.Basic name="model" label="Model" description={provider.llm_model_description}>
+              <FormFieldBasicLayout name="model" label="Model" description={provider.llm_model_description}>
                 <FormInput />
-              </field.Basic>
-              <field.Basic name="credentials" label={provider.credentials_display_name} description={provider.credentials_description}>
+              </FormFieldBasicLayout>
+              <FormFieldBasicLayout name="credentials" label={provider.credentials_display_name} description={provider.credentials_description}>
                 {provider.credentials_type === 'str'
                   ? <FormInput placeholder={provider.default_credentials} />
                   : <CodeInput language="json" placeholder={JSON.stringify(provider.default_credentials, undefined, 2)} />
                 }
-              </field.Basic>
+              </FormFieldBasicLayout>
               <Accordion type="multiple">
                 <AccordionItem value="advanced-settings">
                   <AccordionTrigger>
                     Advanced Settings
                   </AccordionTrigger>
                   <AccordionContent className="px-4">
-                    <field.Basic name="config" label="Config" description={provider.config_description}>
+                    <FormFieldBasicLayout name="config" label="Config">
                       <CodeInput language="json" />
-                    </field.Basic>
+                    </FormFieldBasicLayout>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
             </>
           )}
+          <FormFieldContainedLayout name="is_default" label="Is Default LLM" description="Enable will unset original default LLM.">
+            <FormSwitch />
+          </FormFieldContainedLayout>
           <FormRootError title="Failed to create LLM" />
-          <FormSubmit disabled={!options} transitioning={transitioning} form={id}>
+          <Button disabled={form.formState.disabled || !provider || form.formState.isSubmitting || transitioning}>
+            {(form.formState.isSubmitting || transitioning) && <Loader2Icon className="size-4 mr-1 animate-spin repeat-infinite" />}
             Create LLM
-          </FormSubmit>
+          </Button>
         </form>
       </Form>
     </>

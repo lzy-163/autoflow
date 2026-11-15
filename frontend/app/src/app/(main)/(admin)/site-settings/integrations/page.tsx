@@ -6,7 +6,7 @@ export default async function LangfuseSettingsPage () {
 
   return (
     <>
-      <IntegrationsSettings schema={settings} showPostVerificationSettings={!!process.env.EXPERIMENTAL_MESSAGE_VERIFY_SERVICE} />
+      <IntegrationsSettings schema={settings} />
     </>
   );
 }
